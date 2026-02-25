@@ -5,6 +5,10 @@
     align-items: center;
 }
 
+.requested-color-editor {
+    margin-bottom: 1rem;
+}
+
 .color-swatch {
     width: 48px;
     height: 28px;
