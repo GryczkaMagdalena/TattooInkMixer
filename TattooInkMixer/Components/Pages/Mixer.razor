@@ -1,0 +1,148 @@
+@page "/"
+@page "/mixer"
+@rendermode InteractiveServer
+@using TattooInkMixer.Services
+
+<h3>Tattoo Ink Mixer (Subtractive)</h3>
+
+<div style="display:flex; gap:18px; flex-wrap:wrap;">
+    <div style="min-width:340px;">
+        <label>Target (#RRGGBB):</label><br />
+        <input @bind="TargetHex" style="width:140px;" />
+        <span style="display:inline-block;width:22px;height:22px;margin-left:8px;vertical-align:middle;background:@TargetHex;border:1px solid #999;"></span>
+
+        <div style="margin-top:10px;">
+            <label>Max inks to use:</label><br />
+            <input type="number" min="1" max="20" @bind="MaxInks" style="width:80px;" />
+        </div>
+
+        <button style="margin-top:12px;" @onclick="Solve">Solve</button>
+
+        @if (!string.IsNullOrWhiteSpace(Error))
+        {
+            <p style="color:#b00020">@Error</p>
+        }
+
+        @if (Result is not null)
+        {
+            <hr />
+            <div>
+                <div>
+                    Predicted mix: <b>@Result.PredictedHex</b>
+                    <span style="display:inline-block;width:22px;height:22px;margin-left:8px;vertical-align:middle;background:@Result.PredictedHex;border:1px solid #999;"></span>
+                </div>
+                <div style="margin-top:6px;">
+                    Error (RMSE): @Result.ErrorRmse.ToString("0.000000")
+                </div>
+            </div>
+        }
+    </div>
+
+    <div style="min-width:420px;">
+        <h4>Available inks</h4>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Hex</th>
+                    <th>Preview</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @Inks.Count 
+                @foreach (var ink in Inks)
+                {
+                    <tr @key="ink.Id">
+                        <td><input @bind="ink.Name" /></td>
+                        <td><input @bind="ink.Hex" style="width:110px;" /></td>
+                        <td>
+                            <span style="display:inline-block;width:22px;height:22px;background:@ink.Hex;border:1px solid #999;"></span>
+                        </td>
+                        <td>
+                            <button type="button" @onclick="() => Remove(ink.Id)">X</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <button @onclick="Add">+ Add ink</button>
+
+        @if (Result is not null)
+        {
+            <h4 style="margin-top:14px;">Recipe</h4>
+            <ul>
+                @for (int i = 0; i < Inks.Count; i++)
+                {
+                    var w = Result.Weights[i];
+                    if (w > 1e-6)
+                    {
+                        <li>@Inks[i].Name (@Inks[i].Hex): <b>@(100*w).ToString("0.00")%</b></li>
+                    }
+                }
+            </ul>
+        }
+    </div>
+</div>
+
+@code {
+    private string TargetHex = "#FF8800";
+    private int MaxInks = 4;
+    private string? Error;
+
+    private InkMixResult? Result;
+
+    private List<InkRow> Inks = new()
+    {
+        new("Red",   "#D81B1B"),
+        new("Green", "#1BBE4B"),
+        new("Blue",  "#1B4FD8"),
+        new("Black", "#101010"),
+        new("White", "#FFFFFF"),
+    };
+
+    private void Add()
+    {
+        Inks.Add(new InkRow($"Ink {Inks.Count + 1}", "#808080"));
+        Result = null;
+    }
+
+    private void Remove(Guid id)
+    {
+        var idx = Inks.FindIndex(x => x.Id == id);
+        if (idx >= 0)
+            Inks.RemoveAt(idx);
+
+        Result = null; // optional: clear old solution
+    }
+
+    private void Solve()
+    {
+        Error = null;
+        Result = null;
+
+        try
+        {
+            // validate parsing early (throws on bad hex)
+            _ = Rgb.FromHex(TargetHex);
+            foreach (var ink in Inks) _ = Rgb.FromHex(ink.Hex);
+
+            var hexes = Inks.Select(x => x.Hex).ToList();
+            Result = InkMixSolver.SolveWithLimit(hexes, TargetHex, MaxInks);
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+        }
+    }
+
+    private sealed class InkRow
+    {
+        public Guid Id { get; } = Guid.NewGuid();
+        public InkRow(string name, string hex) { Name = name; Hex = hex; }
+        public string Name { get; set; }
+        public string Hex { get; set; }
+    }
+}
