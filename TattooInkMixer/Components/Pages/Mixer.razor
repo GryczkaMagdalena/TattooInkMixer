@@ -3,89 +3,81 @@
 @rendermode InteractiveServer
 @using TattooInkMixer.Services
 
-<h3>Tattoo Ink Mixer (Subtractive)</h3>
+<MudText Typo="Typo.h4" GutterBottom="true">Tattoo Ink Mixer (Subtractive)</MudText>
 
-<div style="display:flex; gap:18px; flex-wrap:wrap;">
-    <div style="min-width:340px;">
-        <label>Target (#RRGGBB):</label><br />
-        <input @bind="TargetHex" style="width:140px;" />
-        <span style="display:inline-block;width:22px;height:22px;margin-left:8px;vertical-align:middle;background:@TargetHex;border:1px solid #999;"></span>
+<MudGrid Spacing="3">
+    <MudItem xs="12" md="5">
+        <MudPaper Class="pa-4">
+            <MudTextField T="string" Label="Target (#RRGGBB)" Variant="Variant.Outlined" @bind-Value="TargetHex" />
+            <MudChip Class="mt-2" Style="background:@TargetHex; width:48px; height:28px; border:1px solid #999;" />
 
-        <div style="margin-top:10px;">
-            <label>Max inks to use:</label><br />
-            <input type="number" min="1" max="20" @bind="MaxInks" style="width:80px;" />
-        </div>
+            <MudNumericField T="int" Label="Max inks to use" Variant="Variant.Outlined" Min="1" Max="20" Class="mt-4" @bind-Value="MaxInks" />
 
-        <button style="margin-top:12px;" @onclick="Solve">Solve</button>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Solve" Class="mt-4">Solve</MudButton>
 
-        @if (!string.IsNullOrWhiteSpace(Error))
-        {
-            <p style="color:#b00020">@Error</p>
-        }
+            @if (!string.IsNullOrWhiteSpace(Error))
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@Error</MudAlert>
+            }
 
-        @if (Result is not null)
-        {
-            <hr />
-            <div>
-                <div>
+            @if (Result is not null)
+            {
+                <MudDivider Class="my-4" />
+                <MudText>
                     Predicted mix: <b>@Result.PredictedHex</b>
-                    <span style="display:inline-block;width:22px;height:22px;margin-left:8px;vertical-align:middle;background:@Result.PredictedHex;border:1px solid #999;"></span>
-                </div>
-                <div style="margin-top:6px;">
-                    Error (RMSE): @Result.ErrorRmse.ToString("0.000000")
-                </div>
-            </div>
-        }
-    </div>
+                    <MudChip Class="ml-2" Style="background:@Result.PredictedHex; width:48px; height:28px; border:1px solid #999;" />
+                </MudText>
+                <MudText Class="mt-2">Error (RMSE): @Result.ErrorRmse.ToString("0.000000")</MudText>
+            }
+        </MudPaper>
+    </MudItem>
 
-    <div style="min-width:420px;">
-        <h4>Available inks</h4>
+    <MudItem xs="12" md="7">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" GutterBottom="true">Available inks (@Inks.Count)</MudText>
 
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Hex</th>
-                    <th>Preview</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @Inks.Count 
-                @foreach (var ink in Inks)
-                {
-                    <tr @key="ink.Id">
-                        <td><input @bind="ink.Name" /></td>
-                        <td><input @bind="ink.Hex" style="width:110px;" /></td>
-                        <td>
-                            <span style="display:inline-block;width:22px;height:22px;background:@ink.Hex;border:1px solid #999;"></span>
-                        </td>
-                        <td>
-                            <button type="button" @onclick="() => Remove(ink.Id)">X</button>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+            <MudTable Items="Inks" Dense="true" Hover="true" Bordered="true" Striped="true">
+                <HeaderContent>
+                    <MudTh>Name</MudTh>
+                    <MudTh>Hex</MudTh>
+                    <MudTh>Preview</MudTh>
+                    <MudTh></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>
+                        <MudTextField T="string" Value="@context.Name" ValueChanged="@(value => context.Name = value)" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </MudTd>
+                    <MudTd>
+                        <MudTextField T="string" Value="@context.Hex" ValueChanged="@(value => context.Hex = value)" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </MudTd>
+                    <MudTd>
+                        <MudChip Style="background:@context.Hex; width:48px; height:28px; border:1px solid #999;" />
+                    </MudTd>
+                    <MudTd>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="() => Remove(context.Id)" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
 
-        <button @onclick="Add">+ Add ink</button>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="Add" Class="mt-3">Add ink</MudButton>
 
-        @if (Result is not null)
-        {
-            <h4 style="margin-top:14px;">Recipe</h4>
-            <ul>
-                @for (int i = 0; i < Inks.Count; i++)
-                {
-                    var w = Result.Weights[i];
-                    if (w > 1e-6)
+            @if (Result is not null)
+            {
+                <MudText Typo="Typo.h6" Class="mt-4">Recipe</MudText>
+                <MudList Dense="true">
+                    @for (int i = 0; i < Inks.Count; i++)
                     {
-                        <li>@Inks[i].Name (@Inks[i].Hex): <b>@(100*w).ToString("0.00")%</b></li>
+                        var w = Result.Weights[i];
+                        if (w > 1e-6)
+                        {
+                            <MudListItem>@Inks[i].Name (@Inks[i].Hex): <b>@(100 * w).ToString("0.00")%</b></MudListItem>
+                        }
                     }
-                }
-            </ul>
-        }
-    </div>
-</div>
+                </MudList>
+            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
 
 @code {
     private string TargetHex = "#FF8800";
@@ -94,14 +86,14 @@
 
     private InkMixResult? Result;
 
-    private List<InkRow> Inks = new()
-    {
-        new("Red",   "#D81B1B"),
+    private List<InkRow> Inks =
+    [
+        new("Red", "#D81B1B"),
         new("Green", "#1BBE4B"),
-        new("Blue",  "#1B4FD8"),
+        new("Blue", "#1B4FD8"),
         new("Black", "#101010"),
-        new("White", "#FFFFFF"),
-    };
+        new("White", "#FFFFFF")
+    ];
 
     private void Add()
     {
@@ -115,7 +107,7 @@
         if (idx >= 0)
             Inks.RemoveAt(idx);
 
-        Result = null; // optional: clear old solution
+        Result = null;
     }
 
     private void Solve()
@@ -125,7 +117,6 @@
 
         try
         {
-            // validate parsing early (throws on bad hex)
             _ = Rgb.FromHex(TargetHex);
             foreach (var ink in Inks) _ = Rgb.FromHex(ink.Hex);
 

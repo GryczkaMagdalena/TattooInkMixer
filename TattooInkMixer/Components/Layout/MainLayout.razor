@@ -1,5 +1,9 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
-<div style="max-width: 900px; margin: 0 auto; padding: 16px;">
+<MudThemeProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
     @Body
-</div>
+</MudContainer>
