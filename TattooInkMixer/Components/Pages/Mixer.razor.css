@@ -1,0 +1,27 @@
+.color-editor {
+    display: grid;
+    grid-template-columns: 56px minmax(120px, 1fr) minmax(150px, 1fr);
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.requested-color-editor {
+    margin-bottom: 1rem;
+}
+
+.color-swatch {
+    width: 48px;
+    height: 28px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-block;
+    position: relative;
+    overflow: hidden;
+}
+
+.color-swatch input[type="color"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}

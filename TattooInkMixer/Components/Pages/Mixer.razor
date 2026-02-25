@@ -3,44 +3,15 @@
 @rendermode InteractiveServer
 @using TattooInkMixer.Services
 
-<MudText Typo="Typo.h4" GutterBottom="true">Tattoo Ink Mixer (Subtractive)</MudText>
-
 <MudGrid Spacing="3">
-    <MudItem xs="12" md="5">
-        <MudPaper Class="pa-4">
-            <MudTextField T="string" Label="Target (#RRGGBB)" Variant="Variant.Outlined" @bind-Value="TargetHex" />
-            <div class="mt-2" style="@GetColorPreviewStyle(TargetHex)"></div>
-
-            <MudNumericField T="int" Label="Max inks to use" Variant="Variant.Outlined" Min="1" Max="20" Class="mt-4" @bind-Value="MaxInks" />
-
-            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Solve" Class="mt-4">Solve</MudButton>
-
-            @if (!string.IsNullOrWhiteSpace(Error))
-            {
-                <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@Error</MudAlert>
-            }
-
-            @if (Result is not null)
-            {
-                <MudDivider Class="my-4" />
-                <MudText>
-                    Predicted mix: <b>@Result.PredictedHex</b>
-                </MudText>
-                <div class="mt-2" style="@GetColorPreviewStyle(Result.PredictedHex)"></div>
-                <MudText Class="mt-2">Error (RMSE): @Result.ErrorRmse.ToString("0.000000")</MudText>
-            }
-        </MudPaper>
-    </MudItem>
-
     <MudItem xs="12" md="7">
         <MudPaper Class="pa-4">
-            <MudText Typo="Typo.h6" GutterBottom="true">Available inks (@Inks.Count)</MudText>
+            <MudText Typo="Typo.h6" GutterBottom="true">My colors (@Inks.Count)</MudText>
 
             <MudTable Items="Inks" Dense="true" Hover="true" Bordered="true" Striped="true">
                 <HeaderContent>
                     <MudTh>Name</MudTh>
-                    <MudTh>Hex</MudTh>
-                    <MudTh>Preview</MudTh>
+                    <MudTh>Color</MudTh>
                     <MudTh></MudTh>
                 </HeaderContent>
                 <RowTemplate>
@@ -48,10 +19,27 @@
                         <MudTextField T="string" Value="@context.Name" ValueChanged="@(value => context.Name = value)" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
                     </MudTd>
                     <MudTd>
-                        <MudTextField T="string" Value="@context.Hex" ValueChanged="@(value => context.Hex = value)" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                    </MudTd>
-                    <MudTd>
-                        <div style="@GetColorPreviewStyle(context.Hex)"></div>
+                        <div class="color-editor">
+                            <label class="color-swatch" style="@GetColorPreviewStyle(context.Hex)">
+                                <input type="color" value="@GetColorInputValue(context.Hex)" @oninput="@(e => UpdateColorFromPicker(context, e.Value?.ToString()))" />
+                            </label>
+
+                            <MudTextField T="string"
+                                          Label="HEX"
+                                          Value="@context.Hex"
+                                          ValueChanged="@(value => UpdateColorFromHex(context, value))"
+                                          Immediate="true"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense" />
+
+                            <MudTextField T="string"
+                                          Label="RGB"
+                                          Value="@HexToRgbText(context.Hex)"
+                                          ValueChanged="@(value => UpdateColorFromRgb(context, value))"
+                                          Immediate="true"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense" />
+                        </div>
                     </MudTd>
                     <MudTd>
                         <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="() => Remove(context.Id)" />
@@ -59,7 +47,7 @@
                 </RowTemplate>
             </MudTable>
 
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="Add" Class="mt-3">Add ink</MudButton>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="Add" Class="mt-3">Add color</MudButton>
 
             @if (Result is not null)
             {
@@ -74,6 +62,53 @@
                         }
                     }
                 </ul>
+            }
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="5">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" GutterBottom="true">Requested color</MudText>
+
+            <div class="color-editor requested-color-editor">
+                <label class="color-swatch" style="@GetColorPreviewStyle(TargetHex)">
+                    <input type="color" value="@GetColorInputValue(TargetHex)" @oninput="@(e => UpdateTargetFromPicker(e.Value?.ToString()))" />
+                </label>
+
+                <MudTextField T="string"
+                              Label="HEX"
+                              Value="@TargetHex"
+                              ValueChanged="UpdateTargetFromHex"
+                              Immediate="true"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense" />
+
+                <MudTextField T="string"
+                              Label="RGB"
+                              Value="@HexToRgbText(TargetHex)"
+                              ValueChanged="UpdateTargetFromRgb"
+                              Immediate="true"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense" />
+            </div>
+
+            <MudNumericField T="int" Label="Max inks to use" Variant="Variant.Outlined" Min="1" Max="20" Class="mt-4" @bind-Value="MaxInks" />
+
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Solve" Class="mt-4">Mix</MudButton>
+
+            @if (!string.IsNullOrWhiteSpace(Error))
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@Error</MudAlert>
+            }
+
+            @if (Result is not null)
+            {
+                <MudDivider Class="my-4" />
+                <MudText>
+                    Predicted mix: <b>@Result.PredictedHex</b>
+                </MudText>
+                <div class="mt-2" style="@GetColorPreviewStyle(Result.PredictedHex)"></div>
+                <MudText Class="mt-2">Error (RMSE): @Result.ErrorRmse.ToString("0.000000")</MudText>
             }
         </MudPaper>
     </MudItem>
@@ -96,6 +131,100 @@
     ];
 
     private static string GetColorPreviewStyle(string hex) => $"background:{hex}; width:48px; height:28px; border:1px solid #999; border-radius:4px;";
+
+    private static string GetColorInputValue(string hex)
+    {
+        try
+        {
+            _ = Rgb.FromHex(hex);
+            return hex;
+        }
+        catch
+        {
+            return "#808080";
+        }
+    }
+
+    private static string HexToRgbText(string hex)
+    {
+        try
+        {
+            var rgb = Rgb.FromHex(hex);
+            return $"{rgb.R}, {rgb.G}, {rgb.B}";
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    private static string? RgbTextToHex(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        var parts = value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length != 3)
+            return null;
+
+        if (!byte.TryParse(parts[0], out var r) || !byte.TryParse(parts[1], out var g) || !byte.TryParse(parts[2], out var b))
+            return null;
+
+        return $"#{r:X2}{g:X2}{b:X2}";
+    }
+
+    private static void UpdateColorFromPicker(InkRow ink, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return;
+
+        ink.Hex = value.ToUpperInvariant();
+    }
+
+    private static void UpdateColorFromHex(InkRow ink, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            ink.Hex = string.Empty;
+            return;
+        }
+
+        ink.Hex = value.Trim();
+    }
+
+    private static void UpdateColorFromRgb(InkRow ink, string? value)
+    {
+        var hex = RgbTextToHex(value);
+        if (hex is null)
+            return;
+
+        ink.Hex = hex;
+    }
+
+    private void UpdateTargetFromPicker(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return;
+
+        TargetHex = value.ToUpperInvariant();
+        Result = null;
+    }
+
+    private void UpdateTargetFromHex(string? value)
+    {
+        TargetHex = string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+        Result = null;
+    }
+
+    private void UpdateTargetFromRgb(string? value)
+    {
+        var hex = RgbTextToHex(value);
+        if (hex is null)
+            return;
+
+        TargetHex = hex;
+        Result = null;
+    }
 
     private void Add()
     {
