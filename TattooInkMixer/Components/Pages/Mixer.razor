@@ -3,38 +3,10 @@
 @rendermode InteractiveServer
 @using TattooInkMixer.Services
 
-<MudText Typo="Typo.h4" GutterBottom="true">Tattoo Ink Mixer (Subtractive)</MudText>
-
 <MudGrid Spacing="3">
-    <MudItem xs="12" md="5">
-        <MudPaper Class="pa-4">
-            <MudTextField T="string" Label="Target (#RRGGBB)" Variant="Variant.Outlined" @bind-Value="TargetHex" />
-            <div class="mt-2" style="@GetColorPreviewStyle(TargetHex)"></div>
-
-            <MudNumericField T="int" Label="Max inks to use" Variant="Variant.Outlined" Min="1" Max="20" Class="mt-4" @bind-Value="MaxInks" />
-
-            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Solve" Class="mt-4">Solve</MudButton>
-
-            @if (!string.IsNullOrWhiteSpace(Error))
-            {
-                <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@Error</MudAlert>
-            }
-
-            @if (Result is not null)
-            {
-                <MudDivider Class="my-4" />
-                <MudText>
-                    Predicted mix: <b>@Result.PredictedHex</b>
-                </MudText>
-                <div class="mt-2" style="@GetColorPreviewStyle(Result.PredictedHex)"></div>
-                <MudText Class="mt-2">Error (RMSE): @Result.ErrorRmse.ToString("0.000000")</MudText>
-            }
-        </MudPaper>
-    </MudItem>
-
     <MudItem xs="12" md="7">
         <MudPaper Class="pa-4">
-            <MudText Typo="Typo.h6" GutterBottom="true">Available inks (@Inks.Count)</MudText>
+            <MudText Typo="Typo.h6" GutterBottom="true">My colors (@Inks.Count)</MudText>
 
             <MudTable Items="Inks" Dense="true" Hover="true" Bordered="true" Striped="true">
                 <HeaderContent>
@@ -59,7 +31,7 @@
                 </RowTemplate>
             </MudTable>
 
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="Add" Class="mt-3">Add ink</MudButton>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="Add" Class="mt-3">Add color</MudButton>
 
             @if (Result is not null)
             {
@@ -74,6 +46,34 @@
                         }
                     }
                 </ul>
+            }
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="5">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" GutterBottom="true">Requested color</MudText>
+
+            <MudTextField T="string" Label="Target (#RRGGBB)" Variant="Variant.Outlined" @bind-Value="TargetHex" />
+            <div class="mt-2" style="@GetColorPreviewStyle(TargetHex)"></div>
+
+            <MudNumericField T="int" Label="Max inks to use" Variant="Variant.Outlined" Min="1" Max="20" Class="mt-4" @bind-Value="MaxInks" />
+
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Solve" Class="mt-4">Mix</MudButton>
+
+            @if (!string.IsNullOrWhiteSpace(Error))
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@Error</MudAlert>
+            }
+
+            @if (Result is not null)
+            {
+                <MudDivider Class="my-4" />
+                <MudText>
+                    Predicted mix: <b>@Result.PredictedHex</b>
+                </MudText>
+                <div class="mt-2" style="@GetColorPreviewStyle(Result.PredictedHex)"></div>
+                <MudText Class="mt-2">Error (RMSE): @Result.ErrorRmse.ToString("0.000000")</MudText>
             }
         </MudPaper>
     </MudItem>
