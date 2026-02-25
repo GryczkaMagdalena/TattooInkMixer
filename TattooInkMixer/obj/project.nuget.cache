@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "QDjQk8eA8hY=",
+  "success": true,
+  "projectFilePath": "/Users/magdalenagryczka/Code/TattooInkMixer/TattooInkMixer/TattooInkMixer.csproj",
+  "expectedPackageFiles": [
+    "/Users/magdalenagryczka/.nuget/packages/microsoft.aspnetcore.app.internal.assets/10.0.2/microsoft.aspnetcore.app.internal.assets.10.0.2.nupkg.sha512"
+  ],
+  "logs": []
+}
