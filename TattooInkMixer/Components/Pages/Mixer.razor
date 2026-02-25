@@ -9,7 +9,7 @@
     <MudItem xs="12" md="5">
         <MudPaper Class="pa-4">
             <MudTextField T="string" Label="Target (#RRGGBB)" Variant="Variant.Outlined" @bind-Value="TargetHex" />
-            <MudChip Class="mt-2" Style="background:@TargetHex; width:48px; height:28px; border:1px solid #999;" />
+            <div class="mt-2" style="@GetColorPreviewStyle(TargetHex)"></div>
 
             <MudNumericField T="int" Label="Max inks to use" Variant="Variant.Outlined" Min="1" Max="20" Class="mt-4" @bind-Value="MaxInks" />
 
@@ -25,8 +25,8 @@
                 <MudDivider Class="my-4" />
                 <MudText>
                     Predicted mix: <b>@Result.PredictedHex</b>
-                    <MudChip Class="ml-2" Style="background:@Result.PredictedHex; width:48px; height:28px; border:1px solid #999;" />
                 </MudText>
+                <div class="mt-2" style="@GetColorPreviewStyle(Result.PredictedHex)"></div>
                 <MudText Class="mt-2">Error (RMSE): @Result.ErrorRmse.ToString("0.000000")</MudText>
             }
         </MudPaper>
@@ -51,7 +51,7 @@
                         <MudTextField T="string" Value="@context.Hex" ValueChanged="@(value => context.Hex = value)" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
                     </MudTd>
                     <MudTd>
-                        <MudChip Style="background:@context.Hex; width:48px; height:28px; border:1px solid #999;" />
+                        <div style="@GetColorPreviewStyle(context.Hex)"></div>
                     </MudTd>
                     <MudTd>
                         <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="() => Remove(context.Id)" />
@@ -64,16 +64,16 @@
             @if (Result is not null)
             {
                 <MudText Typo="Typo.h6" Class="mt-4">Recipe</MudText>
-                <MudList Dense="true">
+                <ul>
                     @for (int i = 0; i < Inks.Count; i++)
                     {
                         var w = Result.Weights[i];
                         if (w > 1e-6)
                         {
-                            <MudListItem>@Inks[i].Name (@Inks[i].Hex): <b>@(100 * w).ToString("0.00")%</b></MudListItem>
+                            <li>@Inks[i].Name (@Inks[i].Hex): <b>@(100 * w).ToString("0.00")%</b></li>
                         }
                     }
-                </MudList>
+                </ul>
             }
         </MudPaper>
     </MudItem>
@@ -94,6 +94,8 @@
         new("Black", "#101010"),
         new("White", "#FFFFFF")
     ];
+
+    private static string GetColorPreviewStyle(string hex) => $"background:{hex}; width:48px; height:28px; border:1px solid #999; border-radius:4px;";
 
     private void Add()
     {
