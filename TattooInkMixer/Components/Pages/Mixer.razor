@@ -47,6 +47,21 @@
                 </RowTemplate>
             </MudTable>
 
+            <MudTable Items="MarketInks" Dense="true" Hover="true" Bordered="true" Striped="true" Class="mt-3">
+                <HeaderContent>
+                    <MudTh>Brand</MudTh>
+                    <MudTh>Color name</MudTh>
+                    <MudTh>Color example</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Brand</MudTd>
+                    <MudTd>@context.ColorName</MudTd>
+                    <MudTd>
+                        <div style="@GetColorPreviewStyle(context.Hex)"></div>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="Add" Class="mt-3">Add color</MudButton>
 
         </MudPaper>
@@ -131,6 +146,13 @@
         new("Blue", "#1B4FD8"),
         new("Black", "#101010"),
         new("White", "#FFFFFF")
+    ];
+
+    private readonly List<MarketInkRow> MarketInks =
+    [
+        new("World Famous Limitless", "Red 1", "#A40504"),
+        new("Platinum by Dynamic", "Red Grape", "#D81E86"),
+        new("Kuro Sumi Imperial", "Pine Green", "#0B5834")
     ];
 
     private static string GetColorPreviewStyle(string hex) => $"background:{hex}; width:48px; height:28px; border:1px solid #999; border-radius:4px;";
@@ -295,4 +317,6 @@
         public string Name { get; set; }
         public string Hex { get; set; }
     }
+
+    private sealed record MarketInkRow(string Brand, string ColorName, string Hex);
 }
