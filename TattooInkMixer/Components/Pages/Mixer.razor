@@ -126,7 +126,7 @@
                     Predicted mix: <b>@Result.PredictedHex</b>
                 </MudText>
                 <div class="mt-2" style="@GetColorPreviewStyle(Result.PredictedHex)"></div>
-                <MudText Class="mt-2">Error (RMSE): @Result.ErrorRmse.ToString("0.000000")</MudText>
+                <MudText Class="mt-2" Style="@GetSimilarityTextStyle(Result.ErrorRmse)">Similarity: @GetSimilarityText(Result.ErrorRmse)</MudText>
             }
         </MudPaper>
     </MudItem>
@@ -180,6 +180,24 @@
         var marketInks = MarketInks.Select(ink => new SolveInkCandidate($"{ink.Brand} - {ink.ColorName}", ink.Hex));
 
         return userInks.Concat(marketInks);
+    }
+
+    private static string GetSimilarityText(double rmse)
+    {
+        var similarity = Math.Clamp(1.0 - rmse, 0.0, 1.0);
+        return $"{(similarity * 100):0.00}%";
+    }
+
+    private static string GetSimilarityTextStyle(double rmse)
+    {
+        var similarity = Math.Clamp(1.0 - rmse, 0.0, 1.0);
+        if (similarity >= 0.95)
+            return "color:#00C853;";
+
+        if (similarity >= 0.80)
+            return "color:#FB8C00;";
+
+        return "color:#FF1744;";
     }
 
     private static int CalculateDrops(double weight, double cupSizeMl)
