@@ -126,7 +126,7 @@
                     Predicted mix: <b>@Result.PredictedHex</b>
                 </MudText>
                 <div class="mt-2" style="@GetColorPreviewStyle(Result.PredictedHex)"></div>
-                <MudText Class="mt-2">Error (RMSE): @Result.ErrorRmse.ToString("0.000000")</MudText>
+                <MudText Class="mt-2" Style="@GetSimilarityTextStyle(Result.ErrorRmse)">Similarity: @GetSimilarityText(Result.ErrorRmse)</MudText>
             }
         </MudPaper>
     </MudItem>
@@ -164,14 +164,40 @@
         if (Result is null)
             return Enumerable.Empty<RecipeRow>();
 
-        return Inks.Zip(Result.Weights)
+        return GetSolveCandidates().Zip(Result.Weights)
             .Where(pair => pair.Second > 1e-6)
             .Select(pair => new RecipeRow(
-                pair.First.Name,
+                pair.First.DisplayName,
                 pair.First.Hex,
                 $"{(pair.Second * 100):0.00}%",
                 CalculateDrops(pair.Second, 1.5),
                 CalculateDrops(pair.Second, 3.0)));
+    }
+
+    private IEnumerable<SolveInkCandidate> GetSolveCandidates()
+    {
+        var userInks = Inks.Select(ink => new SolveInkCandidate(ink.Name, ink.Hex));
+        var marketInks = MarketInks.Select(ink => new SolveInkCandidate($"{ink.Brand} - {ink.ColorName}", ink.Hex));
+
+        return userInks.Concat(marketInks);
+    }
+
+    private static string GetSimilarityText(double rmse)
+    {
+        var similarity = Math.Clamp(1.0 - rmse, 0.0, 1.0);
+        return $"{(similarity * 100):0.00}%";
+    }
+
+    private static string GetSimilarityTextStyle(double rmse)
+    {
+        var similarity = Math.Clamp(1.0 - rmse, 0.0, 1.0);
+        if (similarity >= 0.95)
+            return "color:#00C853;";
+
+        if (similarity >= 0.90)
+            return "color:#FB8C00;";
+
+        return "color:#FF1744;";
     }
 
     private static int CalculateDrops(double weight, double cupSizeMl)
@@ -297,9 +323,10 @@
         try
         {
             _ = Rgb.FromHex(TargetHex);
-            foreach (var ink in Inks) _ = Rgb.FromHex(ink.Hex);
+            var solveCandidates = GetSolveCandidates().ToList();
+            foreach (var ink in solveCandidates) _ = Rgb.FromHex(ink.Hex);
 
-            var hexes = Inks.Select(x => x.Hex).ToList();
+            var hexes = solveCandidates.Select(x => x.Hex).ToList();
             Result = InkMixSolver.SolveWithLimit(hexes, TargetHex, MaxInks);
         }
         catch (Exception ex)
@@ -309,6 +336,7 @@
     }
 
     private sealed record RecipeRow(string Name, string Hex, string PercentageText, int DropsFor15Ml, int DropsFor3Ml);
+    private sealed record SolveInkCandidate(string DisplayName, string Hex);
 
     private sealed class InkRow
     {
