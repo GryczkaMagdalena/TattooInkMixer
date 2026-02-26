@@ -25,3 +25,29 @@
     opacity: 0;
     cursor: pointer;
 }
+
+:deep(.mud-input-label),
+:deep(.mud-input > input),
+:deep(.mud-input-slot),
+:deep(.mud-table),
+:deep(.mud-table-cell),
+:deep(.mud-typography) {
+    color: #F3E2C4;
+}
+
+:deep(.mud-input-outlined-border) {
+    border-color: rgba(243, 226, 196, 0.45);
+}
+
+:deep(.mud-input-control.mud-input-outlined.mud-input-focused .mud-input-outlined-border) {
+    border-color: #F05048;
+}
+
+:deep(.mud-button-outlined) {
+    color: #F3E2C4;
+    border-color: rgba(243, 226, 196, 0.55);
+}
+
+:deep(.mud-button-outlined:hover) {
+    background-color: rgba(243, 226, 196, 0.16);
+}
