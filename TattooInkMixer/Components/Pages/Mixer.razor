@@ -1,6 +1,8 @@
 @page "/"
 @page "/mixer"
 @rendermode InteractiveServer
+@using System.Text.Json
+@using Microsoft.AspNetCore.Components.Forms
 @using TattooInkMixer.Services
 
 <MudGrid Spacing="3">
@@ -63,6 +65,21 @@
             </MudTable>
 
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="Add" Class="mt-3">Add color</MudButton>
+
+            <MudDivider Class="my-3" />
+            <MudText Typo="Typo.subtitle2" GutterBottom="true">Import color table</MudText>
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                <MudSelect T="ImportMode" Label="Import mode" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="SelectedImportMode">
+                    <MudSelectItem Value="@ImportMode.Replace">Replace</MudSelectItem>
+                    <MudSelectItem Value="@ImportMode.Merge">Merge</MudSelectItem>
+                </MudSelect>
+
+                <MudFileUpload T="IBrowserFile" FilesChanged="ImportColorTable" Accept=".json" Hidden="false">
+                    <ButtonTemplate>
+                        <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.UploadFile" Color="Color.Secondary">Upload .json</MudButton>
+                    </ButtonTemplate>
+                </MudFileUpload>
+            </MudStack>
 
         </MudPaper>
     </MudItem>
@@ -142,6 +159,7 @@
     private List<InkRow> Inks = [];
 
     private List<MarketInkRow> MarketInks = [];
+    private ImportMode SelectedImportMode = ImportMode.Replace;
 
     protected override void OnInitialized()
     {
@@ -328,6 +346,131 @@
         }
     }
 
+    private async Task ImportColorTable(IBrowserFile? file)
+    {
+        Error = null;
+        Result = null;
+
+        if (file is null)
+        {
+            Error = "No file was selected.";
+            return;
+        }
+
+        if (!Path.GetExtension(file.Name).Equals(".json", StringComparison.OrdinalIgnoreCase))
+        {
+            Error = "Only .json color table files are supported.";
+            return;
+        }
+
+        try
+        {
+            await using var stream = file.OpenReadStream(maxAllowedSize: 1_048_576);
+            var model = await JsonSerializer.DeserializeAsync<ColorTableFile>(stream, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            if (model is null)
+            {
+                Error = "Failed to parse the JSON file.";
+                return;
+            }
+
+            var importedEntries = ValidateAndNormalizeEntries(model);
+            var mergedEntries = SelectedImportMode == ImportMode.Replace
+                ? importedEntries
+                : BuildExportModel().Entries.Concat(importedEntries).ToList();
+
+            var dedupedEntries = DeduplicateEntries(mergedEntries);
+            ApplyImportedModel(new ColorTableFile { Version = model.Version, Entries = dedupedEntries });
+        }
+        catch (JsonException ex)
+        {
+            Error = $"Invalid JSON format: {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+        }
+    }
+
+    private static List<ColorTableEntry> ValidateAndNormalizeEntries(ColorTableFile model)
+    {
+        var entries = model.Entries ?? [];
+        var errors = new List<string>();
+        var normalized = new List<ColorTableEntry>();
+
+        for (var i = 0; i < entries.Count; i++)
+        {
+            var entry = entries[i];
+            var entryLabel = $"Entry {i + 1}";
+            var category = string.IsNullOrWhiteSpace(entry.Category) ? ColorCategory.Standard : entry.Category.Trim();
+
+            if (!string.Equals(category, ColorCategory.Standard, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(category, ColorCategory.Company, StringComparison.OrdinalIgnoreCase))
+            {
+                errors.Add($"{entryLabel}: invalid category '{entry.Category}'.");
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(entry.Name))
+            {
+                errors.Add($"{entryLabel}: Name is required.");
+                continue;
+            }
+
+            if (string.Equals(category, ColorCategory.Company, StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(entry.Brand))
+            {
+                errors.Add($"{entryLabel}: Brand is required for company entries.");
+                continue;
+            }
+
+            var normalizedHex = entry.Hex?.Trim().ToUpperInvariant() ?? string.Empty;
+            try
+            {
+                _ = Rgb.FromHex(normalizedHex);
+            }
+            catch
+            {
+                errors.Add($"{entryLabel}: invalid Hex '{entry.Hex}'.");
+                continue;
+            }
+
+            normalized.Add(new ColorTableEntry
+            {
+                Category = string.Equals(category, ColorCategory.Company, StringComparison.OrdinalIgnoreCase)
+                    ? ColorCategory.Company
+                    : ColorCategory.Standard,
+                Name = entry.Name.Trim(),
+                Brand = string.IsNullOrWhiteSpace(entry.Brand) ? null : entry.Brand.Trim(),
+                Hex = normalizedHex
+            });
+        }
+
+        if (errors.Count > 0)
+            throw new InvalidOperationException($"Import validation failed:{Environment.NewLine}{string.Join(Environment.NewLine, errors)}");
+
+        return normalized;
+    }
+
+    private static List<ColorTableEntry> DeduplicateEntries(List<ColorTableEntry> entries)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var deduped = new List<ColorTableEntry>();
+
+        foreach (var entry in entries)
+        {
+            var key = $"{entry.Category.Trim().ToUpperInvariant()}|{entry.Name.Trim().ToUpperInvariant()}|{(entry.Brand ?? string.Empty).Trim().ToUpperInvariant()}|{entry.Hex.Trim().ToUpperInvariant()}";
+            if (!seen.Add(key))
+                continue;
+
+            deduped.Add(entry);
+        }
+
+        return deduped;
+    }
+
     private ColorTableFile BuildExportModel()
     {
         var entries = Inks
@@ -399,4 +542,10 @@
     }
 
     private sealed record MarketInkRow(string Brand, string ColorName, string Hex);
+
+    private enum ImportMode
+    {
+        Replace,
+        Merge
+    }
 }
