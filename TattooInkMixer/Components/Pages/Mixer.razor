@@ -49,20 +49,6 @@
 
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="Add" Class="mt-3">Add color</MudButton>
 
-            @if (Result is not null)
-            {
-                <MudText Typo="Typo.h6" Class="mt-4">Recipe</MudText>
-                <ul>
-                    @for (int i = 0; i < Inks.Count; i++)
-                    {
-                        var w = Result.Weights[i];
-                        if (w > 1e-6)
-                        {
-                            <li>@Inks[i].Name (@Inks[i].Hex): <b>@((100 * w).ToString("0.00"))%</b></li>
-                        }
-                    }
-                </ul>
-            }
         </MudPaper>
     </MudItem>
 
@@ -103,6 +89,18 @@
 
             @if (Result is not null)
             {
+                <MudText Typo="Typo.h6" Class="mt-4">Recipe</MudText>
+                <ul>
+                    @for (int i = 0; i < Inks.Count; i++)
+                    {
+                        var w = Result.Weights[i];
+                        if (w > 1e-6)
+                        {
+                            <li>@Inks[i].Name (@Inks[i].Hex): <b>@((100 * w).ToString("0.00"))%</b></li>
+                        }
+                    }
+                </ul>
+
                 <MudDivider Class="my-4" />
                 <MudText>
                     Predicted mix: <b>@Result.PredictedHex</b>
