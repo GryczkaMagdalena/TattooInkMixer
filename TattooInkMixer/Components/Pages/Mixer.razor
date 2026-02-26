@@ -68,22 +68,7 @@
             <MudStack Row="true" Spacing="2" Class="mt-3">
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="Add">Add color</MudButton>
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Download" OnClick="ExportColorTable">Export colors</MudButton>
-            </MudStack>
-
-            <MudDivider Class="my-3" />
-            <MudText Typo="Typo.subtitle2" GutterBottom="true">Import color table</MudText>
-            <MudStack Spacing="2">
-                <MudText Typo="Typo.caption">Import mode</MudText>
-                <MudRadioGroup T="ImportMode" @bind-Value="SelectedImportMode" Dense="true" Class="mt-n1">
-                    <MudRadio Value="@ImportMode.Replace" Color="Color.Primary">Replace existing colors</MudRadio>
-                    <MudRadio Value="@ImportMode.Merge" Color="Color.Primary">Merge with existing colors</MudRadio>
-                </MudRadioGroup>
-
-                <MudFileUpload T="IBrowserFile" FilesChanged="ImportColorTable" Accept=".json" Hidden="false">
-                    <ButtonTemplate>
-                        <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.UploadFile" Color="Color.Secondary">Upload .json</MudButton>
-                    </ButtonTemplate>
-                </MudFileUpload>
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.UploadFile" OnClick="OpenImportDialog">Import colors</MudButton>
             </MudStack>
 
         </MudPaper>
@@ -154,6 +139,33 @@
     </MudItem>
 </MudGrid>
 
+@if (IsImportDialogOpen)
+{
+    <MudOverlay Visible="true" DarkBackground="true" AutoClose="false" ZIndex="1300">
+        <MudPaper Class="import-dialog pa-4">
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.h6">Import color table</MudText>
+                <MudText Typo="Typo.subtitle2">Import mode</MudText>
+
+                <MudRadioGroup T="ImportMode" @bind-Value="SelectedImportMode" Dense="true" Class="import-mode-group">
+                    <MudRadio Value="@ImportMode.Replace" Color="Color.Primary">Replace existing colors</MudRadio>
+                    <MudRadio Value="@ImportMode.Merge" Color="Color.Primary">Merge with existing colors</MudRadio>
+                </MudRadioGroup>
+
+                <MudFileUpload T="IBrowserFile" FilesChanged="ImportColorTable" Accept=".json" Hidden="false">
+                    <ButtonTemplate>
+                        <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.UploadFile" Color="Color.Secondary">Upload .json</MudButton>
+                    </ButtonTemplate>
+                </MudFileUpload>
+
+                <MudStack Row="true" Justify="Justify.FlexEnd" Class="import-dialog-actions">
+                    <MudButton Variant="Variant.Text" OnClick="CloseImportDialog">Cancel</MudButton>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudOverlay>
+}
+
 @code {
     private string TargetHex = "#FF8800";
     private int MaxInks = 4;
@@ -165,6 +177,7 @@
 
     private List<MarketInkRow> MarketInks = [];
     private ImportMode SelectedImportMode = ImportMode.Replace;
+    private bool IsImportDialogOpen;
 
     [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
 
@@ -369,6 +382,16 @@
         }
     }
 
+    private void OpenImportDialog()
+    {
+        IsImportDialogOpen = true;
+    }
+
+    private void CloseImportDialog()
+    {
+        IsImportDialogOpen = false;
+    }
+
     private async Task ImportColorTable(IBrowserFile? file)
     {
         Error = null;
@@ -407,6 +430,7 @@
 
             var dedupedEntries = DeduplicateEntries(mergedEntries);
             ApplyImportedModel(new ColorTableFile { Version = model.Version, Entries = dedupedEntries });
+            IsImportDialogOpen = false;
         }
         catch (JsonException ex)
         {
