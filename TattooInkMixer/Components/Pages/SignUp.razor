@@ -1,0 +1,38 @@
+@page "/signup"
+@rendermode InteractiveServer
+
+<MudPaper Class="pa-6 mx-auto" Style="max-width: 460px;">
+    <MudText Typo="Typo.h5" GutterBottom="true">Sign up</MudText>
+
+    <MudTextField T="string"
+                  Label="Email"
+                  @bind-Value="Email"
+                  InputType="InputType.Email"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  Required="true" />
+
+    <MudTextField T="string"
+                  Label="Password"
+                  @bind-Value="Password"
+                  InputType="InputType.Password"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  Required="true" />
+
+    <MudTextField T="string"
+                  Label="Re-enter password"
+                  @bind-Value="ConfirmPassword"
+                  InputType="InputType.Password"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  Required="true" />
+
+    <MudButton Color="Color.Primary" Variant="Variant.Filled" Class="mt-4">Create account</MudButton>
+</MudPaper>
+
+@code {
+    private string? Email;
+    private string? Password;
+    private string? ConfirmPassword;
+}
