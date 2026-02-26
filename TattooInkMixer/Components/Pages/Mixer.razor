@@ -2,6 +2,7 @@
 @page "/mixer"
 @rendermode InteractiveServer
 @using System.Text.Json
+@using Microsoft.JSInterop
 @using Microsoft.AspNetCore.Components.Forms
 @using TattooInkMixer.Services
 
@@ -64,7 +65,10 @@
                 </RowTemplate>
             </MudTable>
 
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="Add" Class="mt-3">Add color</MudButton>
+            <MudStack Row="true" Spacing="2" Class="mt-3">
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="Add">Add color</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Download" OnClick="ExportColorTable">Export colors</MudButton>
+            </MudStack>
 
             <MudDivider Class="my-3" />
             <MudText Typo="Typo.subtitle2" GutterBottom="true">Import color table</MudText>
@@ -161,6 +165,8 @@
 
     private List<MarketInkRow> MarketInks = [];
     private ImportMode SelectedImportMode = ImportMode.Replace;
+
+    [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
 
     protected override void OnInitialized()
     {
@@ -347,6 +353,22 @@
         }
     }
 
+    private async Task ExportColorTable()
+    {
+        Error = null;
+
+        try
+        {
+            var model = BuildExportModel();
+            var json = JsonSerializer.Serialize(model, new JsonSerializerOptions { WriteIndented = true });
+            await JsRuntime.InvokeVoidAsync("downloadColorTableFile", "color-table.json", "application/json", json);
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+        }
+    }
+
     private async Task ImportColorTable(IBrowserFile? file)
     {
         Error = null;
@@ -494,6 +516,8 @@
         return new ColorTableFile
         {
             Version = 1,
+            ExportedAtUtc = DateTimeOffset.UtcNow,
+            App = "TattooInkMixer",
             Entries = entries
         };
     }
