@@ -139,21 +139,14 @@
 
     private InkMixResult? Result;
 
-    private List<InkRow> Inks =
-    [
-        new("Red", "#D81B1B"),
-        new("Green", "#1BBE4B"),
-        new("Blue", "#1B4FD8"),
-        new("Black", "#101010"),
-        new("White", "#FFFFFF")
-    ];
+    private List<InkRow> Inks = [];
 
-    private readonly List<MarketInkRow> MarketInks =
-    [
-        new("World Famous Limitless", "Red 1", "#A40504"),
-        new("Platinum by Dynamic", "Red Grape", "#D81E86"),
-        new("Kuro Sumi Imperial", "Pine Green", "#0B5834")
-    ];
+    private List<MarketInkRow> MarketInks = [];
+
+    protected override void OnInitialized()
+    {
+        ApplyImportedModel(CreateDefaultColorTable());
+    }
 
     private static string GetColorPreviewStyle(string hex) => $"background:{hex}; width:48px; height:28px; border:1px solid #999; border-radius:4px;";
 
@@ -334,6 +327,65 @@
             Error = ex.Message;
         }
     }
+
+    private ColorTableFile BuildExportModel()
+    {
+        var entries = Inks
+            .Select(ink => new ColorTableEntry
+            {
+                Category = ColorCategory.Standard,
+                Name = ink.Name,
+                Hex = ink.Hex,
+                Brand = null
+            })
+            .Concat(MarketInks.Select(ink => new ColorTableEntry
+            {
+                Category = ColorCategory.Company,
+                Name = ink.ColorName,
+                Brand = ink.Brand,
+                Hex = ink.Hex
+            }))
+            .ToList();
+
+        return new ColorTableFile
+        {
+            Version = 1,
+            Entries = entries
+        };
+    }
+
+    private void ApplyImportedModel(ColorTableFile model)
+    {
+        var entries = model.Entries ?? [];
+
+        Inks = entries
+            .Where(entry => string.Equals(entry.Category, ColorCategory.Standard, StringComparison.OrdinalIgnoreCase))
+            .Select(entry => new InkRow(entry.Name, entry.Hex))
+            .ToList();
+
+        MarketInks = entries
+            .Where(entry => string.Equals(entry.Category, ColorCategory.Company, StringComparison.OrdinalIgnoreCase))
+            .Select(entry => new MarketInkRow(entry.Brand ?? string.Empty, entry.Name, entry.Hex))
+            .ToList();
+
+        Result = null;
+    }
+
+    private static ColorTableFile CreateDefaultColorTable() => new()
+    {
+        Version = 1,
+        Entries =
+        [
+            new() { Category = ColorCategory.Standard, Name = "Red", Hex = "#D81B1B" },
+            new() { Category = ColorCategory.Standard, Name = "Green", Hex = "#1BBE4B" },
+            new() { Category = ColorCategory.Standard, Name = "Blue", Hex = "#1B4FD8" },
+            new() { Category = ColorCategory.Standard, Name = "Black", Hex = "#101010" },
+            new() { Category = ColorCategory.Standard, Name = "White", Hex = "#FFFFFF" },
+            new() { Category = ColorCategory.Company, Brand = "World Famous Limitless", Name = "Red 1", Hex = "#A40504" },
+            new() { Category = ColorCategory.Company, Brand = "Platinum by Dynamic", Name = "Red Grape", Hex = "#D81E86" },
+            new() { Category = ColorCategory.Company, Brand = "Kuro Sumi Imperial", Name = "Pine Green", Hex = "#0B5834" }
+        ]
+    };
 
     private sealed record RecipeRow(string Name, string Hex, string PercentageText, int DropsFor15Ml, int DropsFor3Ml);
     private sealed record SolveInkCandidate(string DisplayName, string Hex);
