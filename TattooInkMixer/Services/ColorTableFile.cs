@@ -10,7 +10,22 @@ public sealed class ColorTableEntry
 
 public sealed class ColorTableFile
 {
+    /// <summary>
+    /// Export schema version for compatibility. Increment when file format changes.
+    /// Importers should remain backward-compatible with older versions when possible.
+    /// </summary>
     public int Version { get; set; } = 1;
+
+    /// <summary>
+    /// UTC timestamp for when this file was exported.
+    /// </summary>
+    public DateTimeOffset ExportedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>
+    /// Optional application name that produced the export.
+    /// </summary>
+    public string? App { get; set; }
+
     public List<ColorTableEntry> Entries { get; set; } = [];
 }
 
