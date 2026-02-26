@@ -25,3 +25,24 @@
     opacity: 0;
     cursor: pointer;
 }
+
+.import-dialog {
+    width: min(560px, calc(100vw - 2rem));
+    margin: 2rem auto;
+}
+
+.import-mode-group {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.import-dialog :deep(.mud-file-upload) {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.import-dialog-actions {
+    margin-top: 0.5rem;
+}
