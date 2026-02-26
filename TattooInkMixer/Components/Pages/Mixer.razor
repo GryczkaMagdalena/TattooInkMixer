@@ -68,11 +68,12 @@
 
             <MudDivider Class="my-3" />
             <MudText Typo="Typo.subtitle2" GutterBottom="true">Import color table</MudText>
-            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                <MudSelect T="ImportMode" Label="Import mode" Variant="Variant.Outlined" Margin="Margin.Dense" @bind-Value="SelectedImportMode">
-                    <MudSelectItem Value="@ImportMode.Replace">Replace</MudSelectItem>
-                    <MudSelectItem Value="@ImportMode.Merge">Merge</MudSelectItem>
-                </MudSelect>
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.caption">Import mode</MudText>
+                <MudRadioGroup T="ImportMode" @bind-Value="SelectedImportMode" Dense="true" Class="mt-n1">
+                    <MudRadio Value="@ImportMode.Replace" Color="Color.Primary">Replace existing colors</MudRadio>
+                    <MudRadio Value="@ImportMode.Merge" Color="Color.Primary">Merge with existing colors</MudRadio>
+                </MudRadioGroup>
 
                 <MudFileUpload T="IBrowserFile" FilesChanged="ImportColorTable" Accept=".json" Hidden="false">
                     <ButtonTemplate>
