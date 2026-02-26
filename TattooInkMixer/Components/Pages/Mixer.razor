@@ -164,14 +164,22 @@
         if (Result is null)
             return Enumerable.Empty<RecipeRow>();
 
-        return Inks.Zip(Result.Weights)
+        return GetSolveCandidates().Zip(Result.Weights)
             .Where(pair => pair.Second > 1e-6)
             .Select(pair => new RecipeRow(
-                pair.First.Name,
+                pair.First.DisplayName,
                 pair.First.Hex,
                 $"{(pair.Second * 100):0.00}%",
                 CalculateDrops(pair.Second, 1.5),
                 CalculateDrops(pair.Second, 3.0)));
+    }
+
+    private IEnumerable<SolveInkCandidate> GetSolveCandidates()
+    {
+        var userInks = Inks.Select(ink => new SolveInkCandidate(ink.Name, ink.Hex));
+        var marketInks = MarketInks.Select(ink => new SolveInkCandidate($"{ink.Brand} - {ink.ColorName}", ink.Hex));
+
+        return userInks.Concat(marketInks);
     }
 
     private static int CalculateDrops(double weight, double cupSizeMl)
@@ -297,9 +305,10 @@
         try
         {
             _ = Rgb.FromHex(TargetHex);
-            foreach (var ink in Inks) _ = Rgb.FromHex(ink.Hex);
+            var solveCandidates = GetSolveCandidates().ToList();
+            foreach (var ink in solveCandidates) _ = Rgb.FromHex(ink.Hex);
 
-            var hexes = Inks.Select(x => x.Hex).ToList();
+            var hexes = solveCandidates.Select(x => x.Hex).ToList();
             Result = InkMixSolver.SolveWithLimit(hexes, TargetHex, MaxInks);
         }
         catch (Exception ex)
@@ -309,6 +318,7 @@
     }
 
     private sealed record RecipeRow(string Name, string Hex, string PercentageText, int DropsFor15Ml, int DropsFor3Ml);
+    private sealed record SolveInkCandidate(string DisplayName, string Hex);
 
     private sealed class InkRow
     {
