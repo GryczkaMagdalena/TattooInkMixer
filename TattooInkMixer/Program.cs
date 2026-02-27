@@ -17,6 +17,25 @@ builder.Services.AddDbContext<InkMixerDbContext>(options =>
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<InkMixerDbContext>();
+    dbContext.Database.Migrate();
+
+    if (!dbContext.ColorTableRecords.Any())
+    {
+        dbContext.ColorTableRecords.AddRange(ColorTableStore.CreateDefaultEntries().Select(entry => new ColorTableRecord
+        {
+            Category = entry.Category,
+            Name = entry.Name,
+            Brand = entry.Brand,
+            Hex = entry.Hex
+        }));
+
+        dbContext.SaveChanges();
+    }
+}
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {

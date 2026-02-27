@@ -7,7 +7,7 @@ public sealed class EfColorTableRepository(InkMixerDbContext dbContext) : IColor
 {
     public IReadOnlyList<ColorTableEntry> LoadEntries()
     {
-        dbContext.Database.EnsureCreated();
+        dbContext.Database.Migrate();
 
         return dbContext.ColorTableRecords
             .AsNoTracking()
@@ -24,7 +24,7 @@ public sealed class EfColorTableRepository(InkMixerDbContext dbContext) : IColor
 
     public void SaveEntries(IEnumerable<ColorTableEntry> entries)
     {
-        dbContext.Database.EnsureCreated();
+        dbContext.Database.Migrate();
 
         dbContext.ColorTableRecords.RemoveRange(dbContext.ColorTableRecords);
 

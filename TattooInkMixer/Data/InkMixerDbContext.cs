@@ -12,9 +12,18 @@ public class InkMixerDbContext(DbContextOptions<InkMixerDbContext> options) : Db
         {
             entity.ToTable("ColorTableEntries");
             entity.HasKey(record => record.Id);
-            entity.Property(record => record.Category).IsRequired();
-            entity.Property(record => record.Name).IsRequired();
-            entity.Property(record => record.Hex).IsRequired();
+
+            entity.Property(record => record.Category)
+                .IsRequired();
+
+            entity.Property(record => record.Name)
+                .IsRequired();
+
+            entity.Property(record => record.Brand)
+                .IsRequired(false);
+
+            entity.Property(record => record.Hex)
+                .IsRequired();
         });
     }
 }

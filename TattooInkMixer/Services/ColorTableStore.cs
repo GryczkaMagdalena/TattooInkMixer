@@ -54,7 +54,7 @@ public sealed class ColorTableStore
         }
     }
 
-    private static List<ColorTableEntry> CreateDefaultEntries() =>
+    public static List<ColorTableEntry> CreateDefaultEntries() =>
     [
         new() { Category = ColorCategory.Standard, Name = "Red", Hex = "#D81B1B" },
         new() { Category = ColorCategory.Standard, Name = "Green", Hex = "#1BBE4B" },
