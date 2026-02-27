@@ -1,189 +1,81 @@
 @page "/"
 @page "/mixer"
 @rendermode InteractiveServer
-@using System.Text.Json
-@using Microsoft.JSInterop
-@using Microsoft.AspNetCore.Components.Forms
 @using TattooInkMixer.Services
 
-<MudGrid Spacing="3">
-    <MudItem xs="12" md="7">
-        <MudPaper Class="pa-4">
-            <MudText Typo="Typo.h6" GutterBottom="true">My colors (@Inks.Count)</MudText>
+<MudPaper Class="pa-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Requested color</MudText>
 
-            <MudTable Items="Inks" Dense="true" Hover="true" Bordered="true" Striped="true">
-                <HeaderContent>
-                    <MudTh>Name</MudTh>
-                    <MudTh>Color</MudTh>
-                    <MudTh></MudTh>
-                </HeaderContent>
-                <RowTemplate>
-                    <MudTd>
-                        <MudTextField T="string" Value="@context.Name" ValueChanged="@(value => context.Name = value)" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                    </MudTd>
-                    <MudTd>
-                        <div class="color-editor">
-                            <label class="color-swatch" style="@GetColorPreviewStyle(context.Hex)">
-                                <input type="color" value="@GetColorInputValue(context.Hex)" @oninput="@(e => UpdateColorFromPicker(context, e.Value?.ToString()))" />
-                            </label>
+    <div class="color-editor requested-color-editor">
+        <label class="color-swatch" style="@GetColorPreviewStyle(TargetHex)">
+            <input type="color" value="@GetColorInputValue(TargetHex)" @oninput="@(e => UpdateTargetFromPicker(e.Value?.ToString()))" />
+        </label>
 
-                            <MudTextField T="string"
-                                          Label="HEX"
-                                          Value="@context.Hex"
-                                          ValueChanged="@(value => UpdateColorFromHex(context, value))"
-                                          Immediate="true"
-                                          Variant="Variant.Outlined"
-                                          Margin="Margin.Dense" />
+        <MudTextField T="string"
+                      Label="HEX"
+                      Value="@TargetHex"
+                      ValueChanged="UpdateTargetFromHex"
+                      Immediate="true"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense" />
 
-                            <MudTextField T="string"
-                                          Label="RGB"
-                                          Value="@HexToRgbText(context.Hex)"
-                                          ValueChanged="@(value => UpdateColorFromRgb(context, value))"
-                                          Immediate="true"
-                                          Variant="Variant.Outlined"
-                                          Margin="Margin.Dense" />
-                        </div>
-                    </MudTd>
-                    <MudTd>
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="() => Remove(context.Id)" />
-                    </MudTd>
-                </RowTemplate>
-            </MudTable>
+        <MudTextField T="string"
+                      Label="RGB"
+                      Value="@HexToRgbText(TargetHex)"
+                      ValueChanged="UpdateTargetFromRgb"
+                      Immediate="true"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense" />
+    </div>
 
-            <MudTable Items="MarketInks" Dense="true" Hover="true" Bordered="true" Striped="true" Class="mt-3">
-                <HeaderContent>
-                    <MudTh>Brand</MudTh>
-                    <MudTh>Color name</MudTh>
-                    <MudTh>Color example</MudTh>
-                </HeaderContent>
-                <RowTemplate>
-                    <MudTd>@context.Brand</MudTd>
-                    <MudTd>@context.ColorName</MudTd>
-                    <MudTd>
-                        <div style="@GetColorPreviewStyle(context.Hex)"></div>
-                    </MudTd>
-                </RowTemplate>
-            </MudTable>
+    <MudNumericField T="int" Label="Max inks to use" Variant="Variant.Outlined" Min="1" Max="20" Class="mt-4" @bind-Value="MaxInks" />
 
-            <MudStack Row="true" Spacing="2" Class="mt-3">
-                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="Add">Add color</MudButton>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Download" OnClick="ExportColorTable">Export colors</MudButton>
-                <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.UploadFile" OnClick="OpenImportDialog">Import colors</MudButton>
-            </MudStack>
+    <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Solve" Class="mt-4">Mix</MudButton>
 
-        </MudPaper>
-    </MudItem>
+    @if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@Error</MudAlert>
+    }
 
-    <MudItem xs="12" md="5">
-        <MudPaper Class="pa-4">
-            <MudText Typo="Typo.h6" GutterBottom="true">Requested color</MudText>
+    @if (Result is not null)
+    {
+        <MudText Typo="Typo.h6" Class="mt-4">Recipe</MudText>
 
-            <div class="color-editor requested-color-editor">
-                <label class="color-swatch" style="@GetColorPreviewStyle(TargetHex)">
-                    <input type="color" value="@GetColorInputValue(TargetHex)" @oninput="@(e => UpdateTargetFromPicker(e.Value?.ToString()))" />
-                </label>
+        <MudTable Items="@GetRecipeRows()" Dense="true" Hover="true" Bordered="true" Striped="true" Class="mt-2">
+            <HeaderContent>
+                <MudTh>Color</MudTh>
+                <MudTh>Percentage</MudTh>
+                <MudTh>Drops (1.5 ml)</MudTh>
+                <MudTh>Drops (3 ml)</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.Name (@context.Hex)</MudTd>
+                <MudTd><b>@context.PercentageText</b></MudTd>
+                <MudTd>@context.DropsFor15Ml</MudTd>
+                <MudTd>@context.DropsFor3Ml</MudTd>
+            </RowTemplate>
+        </MudTable>
 
-                <MudTextField T="string"
-                              Label="HEX"
-                              Value="@TargetHex"
-                              ValueChanged="UpdateTargetFromHex"
-                              Immediate="true"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense" />
-
-                <MudTextField T="string"
-                              Label="RGB"
-                              Value="@HexToRgbText(TargetHex)"
-                              ValueChanged="UpdateTargetFromRgb"
-                              Immediate="true"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense" />
-            </div>
-
-            <MudNumericField T="int" Label="Max inks to use" Variant="Variant.Outlined" Min="1" Max="20" Class="mt-4" @bind-Value="MaxInks" />
-
-            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Solve" Class="mt-4">Mix</MudButton>
-
-            @if (!string.IsNullOrWhiteSpace(Error))
-            {
-                <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@Error</MudAlert>
-            }
-
-            @if (Result is not null)
-            {
-                <MudText Typo="Typo.h6" Class="mt-4">Recipe</MudText>
-
-                <MudTable Items="@GetRecipeRows()" Dense="true" Hover="true" Bordered="true" Striped="true" Class="mt-2">
-                    <HeaderContent>
-                        <MudTh>Color</MudTh>
-                        <MudTh>Percentage</MudTh>
-                        <MudTh>Drops (1.5 ml)</MudTh>
-                        <MudTh>Drops (3 ml)</MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd>@context.Name (@context.Hex)</MudTd>
-                        <MudTd><b>@context.PercentageText</b></MudTd>
-                        <MudTd>@context.DropsFor15Ml</MudTd>
-                        <MudTd>@context.DropsFor3Ml</MudTd>
-                    </RowTemplate>
-                </MudTable>
-
-                <MudDivider Class="my-4" />
-                <MudText>
-                    Predicted mix: <b>@Result.PredictedHex</b>
-                </MudText>
-                <div class="mt-2" style="@GetColorPreviewStyle(Result.PredictedHex)"></div>
-                <MudText Class="mt-2" Style="@GetSimilarityTextStyle(Result.ErrorRmse)">Similarity: @GetSimilarityText(Result.ErrorRmse)</MudText>
-            }
-        </MudPaper>
-    </MudItem>
-</MudGrid>
-
-@if (IsImportDialogOpen)
-{
-    <MudOverlay Visible="true" DarkBackground="true" AutoClose="false" ZIndex="1300">
-        <MudPaper Class="import-dialog pa-4">
-            <MudStack Spacing="2">
-                <MudText Typo="Typo.h6">Import color table</MudText>
-                <MudText Typo="Typo.subtitle2">Import mode</MudText>
-
-                <MudRadioGroup T="ImportMode" @bind-Value="SelectedImportMode" Dense="true" Class="import-mode-group">
-                    <MudRadio Value="@ImportMode.Replace" Color="Color.Primary">Replace existing colors</MudRadio>
-                    <MudRadio Value="@ImportMode.Merge" Color="Color.Primary">Merge with existing colors</MudRadio>
-                </MudRadioGroup>
-
-                <MudFileUpload T="IBrowserFile" FilesChanged="ImportColorTable" Accept=".json" Hidden="false">
-                    <ButtonTemplate>
-                        <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.UploadFile" Color="Color.Secondary">Upload .json</MudButton>
-                    </ButtonTemplate>
-                </MudFileUpload>
-
-                <MudStack Row="true" Justify="Justify.FlexEnd" Class="import-dialog-actions">
-                    <MudButton Variant="Variant.Text" OnClick="CloseImportDialog">Cancel</MudButton>
-                </MudStack>
-            </MudStack>
-        </MudPaper>
-    </MudOverlay>
-}
+        <MudDivider Class="my-4" />
+        <MudText>
+            Predicted mix: <b>@Result.PredictedHex</b>
+        </MudText>
+        <div class="mt-2" style="@GetColorPreviewStyle(Result.PredictedHex)"></div>
+        <MudText Class="mt-2" Style="@GetSimilarityTextStyle(Result.ErrorRmse)">Similarity: @GetSimilarityText(Result.ErrorRmse)</MudText>
+    }
+</MudPaper>
 
 @code {
     private string TargetHex = "#FF8800";
     private int MaxInks = 4;
     private string? Error;
-
     private InkMixResult? Result;
 
-    private List<InkRow> Inks = [];
-
-    private List<MarketInkRow> MarketInks = [];
-    private ImportMode SelectedImportMode = ImportMode.Replace;
-    private bool IsImportDialogOpen;
-
-    [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
+    [Inject] private ColorTableStore ColorTableStore { get; set; } = default!;
 
     protected override void OnInitialized()
     {
-        ApplyImportedModel(CreateDefaultColorTable());
+        ColorTableStore.EnsureInitialized();
     }
 
     private static string GetColorPreviewStyle(string hex) => $"background:{hex}; width:48px; height:28px; border:1px solid #999; border-radius:4px;";
@@ -207,8 +99,14 @@
 
     private IEnumerable<SolveInkCandidate> GetSolveCandidates()
     {
-        var userInks = Inks.Select(ink => new SolveInkCandidate(ink.Name, ink.Hex));
-        var marketInks = MarketInks.Select(ink => new SolveInkCandidate($"{ink.Brand} - {ink.ColorName}", ink.Hex));
+        var entries = ColorTableStore.Entries;
+        var userInks = entries
+            .Where(entry => string.Equals(entry.Category, ColorCategory.Standard, StringComparison.OrdinalIgnoreCase))
+            .Select(entry => new SolveInkCandidate(entry.Name, entry.Hex));
+
+        var marketInks = entries
+            .Where(entry => string.Equals(entry.Category, ColorCategory.Company, StringComparison.OrdinalIgnoreCase))
+            .Select(entry => new SolveInkCandidate($"{entry.Brand ?? string.Empty} - {entry.Name}", entry.Hex));
 
         return userInks.Concat(marketInks);
     }
@@ -278,34 +176,6 @@
         return $"#{r:X2}{g:X2}{b:X2}";
     }
 
-    private static void UpdateColorFromPicker(InkRow ink, string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return;
-
-        ink.Hex = value.ToUpperInvariant();
-    }
-
-    private static void UpdateColorFromHex(InkRow ink, string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            ink.Hex = string.Empty;
-            return;
-        }
-
-        ink.Hex = value.Trim();
-    }
-
-    private static void UpdateColorFromRgb(InkRow ink, string? value)
-    {
-        var hex = RgbTextToHex(value);
-        if (hex is null)
-            return;
-
-        ink.Hex = hex;
-    }
-
     private void UpdateTargetFromPicker(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -331,21 +201,6 @@
         Result = null;
     }
 
-    private void Add()
-    {
-        Inks.Add(new InkRow($"Ink {Inks.Count + 1}", "#808080"));
-        Result = null;
-    }
-
-    private void Remove(Guid id)
-    {
-        var idx = Inks.FindIndex(x => x.Id == id);
-        if (idx >= 0)
-            Inks.RemoveAt(idx);
-
-        Result = null;
-    }
-
     private void Solve()
     {
         Error = null;
@@ -366,235 +221,6 @@
         }
     }
 
-    private async Task ExportColorTable()
-    {
-        Error = null;
-
-        try
-        {
-            var model = BuildExportModel();
-            var json = JsonSerializer.Serialize(model, new JsonSerializerOptions { WriteIndented = true });
-            await JsRuntime.InvokeVoidAsync("downloadColorTableFile", "color-table.json", "application/json", json);
-        }
-        catch (Exception ex)
-        {
-            Error = ex.Message;
-        }
-    }
-
-    private void OpenImportDialog()
-    {
-        IsImportDialogOpen = true;
-    }
-
-    private void CloseImportDialog()
-    {
-        IsImportDialogOpen = false;
-    }
-
-    private async Task ImportColorTable(IBrowserFile? file)
-    {
-        Error = null;
-        Result = null;
-
-        if (file is null)
-        {
-            Error = "No file was selected.";
-            return;
-        }
-
-        if (!Path.GetExtension(file.Name).Equals(".json", StringComparison.OrdinalIgnoreCase))
-        {
-            Error = "Only .json color table files are supported.";
-            return;
-        }
-
-        try
-        {
-            await using var stream = file.OpenReadStream(maxAllowedSize: 1_048_576);
-            var model = await JsonSerializer.DeserializeAsync<ColorTableFile>(stream, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
-
-            if (model is null)
-            {
-                Error = "Failed to parse the JSON file.";
-                return;
-            }
-
-            var importedEntries = ValidateAndNormalizeEntries(model);
-            var mergedEntries = SelectedImportMode == ImportMode.Replace
-                ? importedEntries
-                : BuildExportModel().Entries.Concat(importedEntries).ToList();
-
-            var dedupedEntries = DeduplicateEntries(mergedEntries);
-            ApplyImportedModel(new ColorTableFile { Version = model.Version, Entries = dedupedEntries });
-            IsImportDialogOpen = false;
-        }
-        catch (JsonException ex)
-        {
-            Error = $"Invalid JSON format: {ex.Message}";
-        }
-        catch (Exception ex)
-        {
-            Error = ex.Message;
-        }
-    }
-
-    private static List<ColorTableEntry> ValidateAndNormalizeEntries(ColorTableFile model)
-    {
-        var entries = model.Entries ?? [];
-        var errors = new List<string>();
-        var normalized = new List<ColorTableEntry>();
-
-        for (var i = 0; i < entries.Count; i++)
-        {
-            var entry = entries[i];
-            var entryLabel = $"Entry {i + 1}";
-            var category = string.IsNullOrWhiteSpace(entry.Category) ? ColorCategory.Standard : entry.Category.Trim();
-
-            if (!string.Equals(category, ColorCategory.Standard, StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(category, ColorCategory.Company, StringComparison.OrdinalIgnoreCase))
-            {
-                errors.Add($"{entryLabel}: invalid category '{entry.Category}'.");
-                continue;
-            }
-
-            if (string.IsNullOrWhiteSpace(entry.Name))
-            {
-                errors.Add($"{entryLabel}: Name is required.");
-                continue;
-            }
-
-            if (string.Equals(category, ColorCategory.Company, StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(entry.Brand))
-            {
-                errors.Add($"{entryLabel}: Brand is required for company entries.");
-                continue;
-            }
-
-            var normalizedHex = entry.Hex?.Trim().ToUpperInvariant() ?? string.Empty;
-            try
-            {
-                _ = Rgb.FromHex(normalizedHex);
-            }
-            catch
-            {
-                errors.Add($"{entryLabel}: invalid Hex '{entry.Hex}'.");
-                continue;
-            }
-
-            normalized.Add(new ColorTableEntry
-            {
-                Category = string.Equals(category, ColorCategory.Company, StringComparison.OrdinalIgnoreCase)
-                    ? ColorCategory.Company
-                    : ColorCategory.Standard,
-                Name = entry.Name.Trim(),
-                Brand = string.IsNullOrWhiteSpace(entry.Brand) ? null : entry.Brand.Trim(),
-                Hex = normalizedHex
-            });
-        }
-
-        if (errors.Count > 0)
-            throw new InvalidOperationException($"Import validation failed:{Environment.NewLine}{string.Join(Environment.NewLine, errors)}");
-
-        return normalized;
-    }
-
-    private static List<ColorTableEntry> DeduplicateEntries(List<ColorTableEntry> entries)
-    {
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var deduped = new List<ColorTableEntry>();
-
-        foreach (var entry in entries)
-        {
-            var key = $"{entry.Category.Trim().ToUpperInvariant()}|{entry.Name.Trim().ToUpperInvariant()}|{(entry.Brand ?? string.Empty).Trim().ToUpperInvariant()}|{entry.Hex.Trim().ToUpperInvariant()}";
-            if (!seen.Add(key))
-                continue;
-
-            deduped.Add(entry);
-        }
-
-        return deduped;
-    }
-
-    private ColorTableFile BuildExportModel()
-    {
-        var entries = Inks
-            .Select(ink => new ColorTableEntry
-            {
-                Category = ColorCategory.Standard,
-                Name = ink.Name,
-                Hex = ink.Hex,
-                Brand = null
-            })
-            .Concat(MarketInks.Select(ink => new ColorTableEntry
-            {
-                Category = ColorCategory.Company,
-                Name = ink.ColorName,
-                Brand = ink.Brand,
-                Hex = ink.Hex
-            }))
-            .ToList();
-
-        return new ColorTableFile
-        {
-            Version = 1,
-            ExportedAtUtc = DateTimeOffset.UtcNow,
-            App = "TattooInkMixer",
-            Entries = entries
-        };
-    }
-
-    private void ApplyImportedModel(ColorTableFile model)
-    {
-        var entries = model.Entries ?? [];
-
-        Inks = entries
-            .Where(entry => string.Equals(entry.Category, ColorCategory.Standard, StringComparison.OrdinalIgnoreCase))
-            .Select(entry => new InkRow(entry.Name, entry.Hex))
-            .ToList();
-
-        MarketInks = entries
-            .Where(entry => string.Equals(entry.Category, ColorCategory.Company, StringComparison.OrdinalIgnoreCase))
-            .Select(entry => new MarketInkRow(entry.Brand ?? string.Empty, entry.Name, entry.Hex))
-            .ToList();
-
-        Result = null;
-    }
-
-    private static ColorTableFile CreateDefaultColorTable() => new()
-    {
-        Version = 1,
-        Entries =
-        [
-            new() { Category = ColorCategory.Standard, Name = "Red", Hex = "#D81B1B" },
-            new() { Category = ColorCategory.Standard, Name = "Green", Hex = "#1BBE4B" },
-            new() { Category = ColorCategory.Standard, Name = "Blue", Hex = "#1B4FD8" },
-            new() { Category = ColorCategory.Standard, Name = "Black", Hex = "#101010" },
-            new() { Category = ColorCategory.Standard, Name = "White", Hex = "#FFFFFF" },
-            new() { Category = ColorCategory.Company, Brand = "World Famous Limitless", Name = "Red 1", Hex = "#A40504" },
-            new() { Category = ColorCategory.Company, Brand = "Platinum by Dynamic", Name = "Red Grape", Hex = "#D81E86" },
-            new() { Category = ColorCategory.Company, Brand = "Kuro Sumi Imperial", Name = "Pine Green", Hex = "#0B5834" }
-        ]
-    };
-
     private sealed record RecipeRow(string Name, string Hex, string PercentageText, int DropsFor15Ml, int DropsFor3Ml);
     private sealed record SolveInkCandidate(string DisplayName, string Hex);
-
-    private sealed class InkRow
-    {
-        public Guid Id { get; } = Guid.NewGuid();
-        public InkRow(string name, string hex) { Name = name; Hex = hex; }
-        public string Name { get; set; }
-        public string Hex { get; set; }
-    }
-
-    private sealed record MarketInkRow(string Brand, string ColorName, string Hex);
-
-    private enum ImportMode
-    {
-        Replace,
-        Merge
-    }
 }

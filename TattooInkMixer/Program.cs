@@ -1,3 +1,4 @@
+using TattooInkMixer.Services;
 using MudBlazor.Services;
 using TattooInkMixer.Components;
 
@@ -7,6 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddMudServices();
+builder.Services.AddScoped<ColorTableStore>();
 
 var app = builder.Build();
 
