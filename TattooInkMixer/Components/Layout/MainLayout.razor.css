@@ -1,3 +1,14 @@
 :global(html), :global(body) {
     background-color: #151313;
 }
+
+
+.brand-link {
+    display: inline-flex;
+    align-items: center;
+}
+
+.brand-logo {
+    max-height: 36px;
+    width: auto;
+}
