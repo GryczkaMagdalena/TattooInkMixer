@@ -3,17 +3,17 @@ html, body {
 }
 
 a, .btn-link {
-    color: #D9DEE8;
+    color: #D7E1F0;
 }
 
 .btn-primary {
-    color: #151313;
+    color: #11141A;
     background-color: #E24A53;
     border-color: #E24A53;
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #D9DEE8;
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #D7E1F0;
 }
 
 .content {
