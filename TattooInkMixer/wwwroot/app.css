@@ -8,8 +8,8 @@ a, .btn-link {
 
 .btn-primary {
     color: #151313;
-    background-color: #F05048;
-    border-color: #F05048;
+    background-color: #E24A53;
+    border-color: #E24A53;
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
