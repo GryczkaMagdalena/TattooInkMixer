@@ -82,13 +82,15 @@
 
     private static int DropsPerMilliliter => 20;
 
+    private const double SmallestVisiblePercentage = 0.005;
+
     private IEnumerable<RecipeRow> GetRecipeRows()
     {
         if (Result is null)
             return Enumerable.Empty<RecipeRow>();
 
         return GetSolveCandidates().Zip(Result.Weights)
-            .Where(pair => pair.Second > 1e-6)
+            .Where(pair => (pair.Second * 100) >= SmallestVisiblePercentage)
             .Select(pair => new RecipeRow(
                 pair.First.DisplayName,
                 pair.First.Hex,
