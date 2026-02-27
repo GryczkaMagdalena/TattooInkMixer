@@ -6,8 +6,72 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using TattooInkMixer.Services
 
-<MudGrid Spacing="3">
-    <MudItem xs="12" md="7">
+<MudTabs Elevation="1" Rounded="true" PanelClass="pa-4" Class="mixer-tabs">
+    <MudTabPanel Text="Requested color">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" GutterBottom="true">Requested color</MudText>
+
+            <div class="color-editor requested-color-editor">
+                <label class="color-swatch" style="@GetColorPreviewStyle(TargetHex)">
+                    <input type="color" value="@GetColorInputValue(TargetHex)" @oninput="@(e => UpdateTargetFromPicker(e.Value?.ToString()))" />
+                </label>
+
+                <MudTextField T="string"
+                              Label="HEX"
+                              Value="@TargetHex"
+                              ValueChanged="UpdateTargetFromHex"
+                              Immediate="true"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense" />
+
+                <MudTextField T="string"
+                              Label="RGB"
+                              Value="@HexToRgbText(TargetHex)"
+                              ValueChanged="UpdateTargetFromRgb"
+                              Immediate="true"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense" />
+            </div>
+
+            <MudNumericField T="int" Label="Max inks to use" Variant="Variant.Outlined" Min="1" Max="20" Class="mt-4" @bind-Value="MaxInks" />
+
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Solve" Class="mt-4">Mix</MudButton>
+
+            @if (!string.IsNullOrWhiteSpace(Error))
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@Error</MudAlert>
+            }
+
+            @if (Result is not null)
+            {
+                <MudText Typo="Typo.h6" Class="mt-4">Recipe</MudText>
+
+                <MudTable Items="@GetRecipeRows()" Dense="true" Hover="true" Bordered="true" Striped="true" Class="mt-2">
+                    <HeaderContent>
+                        <MudTh>Color</MudTh>
+                        <MudTh>Percentage</MudTh>
+                        <MudTh>Drops (1.5 ml)</MudTh>
+                        <MudTh>Drops (3 ml)</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Name (@context.Hex)</MudTd>
+                        <MudTd><b>@context.PercentageText</b></MudTd>
+                        <MudTd>@context.DropsFor15Ml</MudTd>
+                        <MudTd>@context.DropsFor3Ml</MudTd>
+                    </RowTemplate>
+                </MudTable>
+
+                <MudDivider Class="my-4" />
+                <MudText>
+                    Predicted mix: <b>@Result.PredictedHex</b>
+                </MudText>
+                <div class="mt-2" style="@GetColorPreviewStyle(Result.PredictedHex)"></div>
+                <MudText Class="mt-2" Style="@GetSimilarityTextStyle(Result.ErrorRmse)">Similarity: @GetSimilarityText(Result.ErrorRmse)</MudText>
+            }
+        </MudPaper>
+    </MudTabPanel>
+
+    <MudTabPanel Text="Color table">
         <MudPaper Class="pa-4">
             <MudText Typo="Typo.h6" GutterBottom="true">My colors (@Inks.Count)</MudText>
 
@@ -70,74 +134,9 @@
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Download" OnClick="ExportColorTable">Export colors</MudButton>
                 <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.UploadFile" OnClick="OpenImportDialog">Import colors</MudButton>
             </MudStack>
-
         </MudPaper>
-    </MudItem>
-
-    <MudItem xs="12" md="5">
-        <MudPaper Class="pa-4">
-            <MudText Typo="Typo.h6" GutterBottom="true">Requested color</MudText>
-
-            <div class="color-editor requested-color-editor">
-                <label class="color-swatch" style="@GetColorPreviewStyle(TargetHex)">
-                    <input type="color" value="@GetColorInputValue(TargetHex)" @oninput="@(e => UpdateTargetFromPicker(e.Value?.ToString()))" />
-                </label>
-
-                <MudTextField T="string"
-                              Label="HEX"
-                              Value="@TargetHex"
-                              ValueChanged="UpdateTargetFromHex"
-                              Immediate="true"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense" />
-
-                <MudTextField T="string"
-                              Label="RGB"
-                              Value="@HexToRgbText(TargetHex)"
-                              ValueChanged="UpdateTargetFromRgb"
-                              Immediate="true"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense" />
-            </div>
-
-            <MudNumericField T="int" Label="Max inks to use" Variant="Variant.Outlined" Min="1" Max="20" Class="mt-4" @bind-Value="MaxInks" />
-
-            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Solve" Class="mt-4">Mix</MudButton>
-
-            @if (!string.IsNullOrWhiteSpace(Error))
-            {
-                <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@Error</MudAlert>
-            }
-
-            @if (Result is not null)
-            {
-                <MudText Typo="Typo.h6" Class="mt-4">Recipe</MudText>
-
-                <MudTable Items="@GetRecipeRows()" Dense="true" Hover="true" Bordered="true" Striped="true" Class="mt-2">
-                    <HeaderContent>
-                        <MudTh>Color</MudTh>
-                        <MudTh>Percentage</MudTh>
-                        <MudTh>Drops (1.5 ml)</MudTh>
-                        <MudTh>Drops (3 ml)</MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd>@context.Name (@context.Hex)</MudTd>
-                        <MudTd><b>@context.PercentageText</b></MudTd>
-                        <MudTd>@context.DropsFor15Ml</MudTd>
-                        <MudTd>@context.DropsFor3Ml</MudTd>
-                    </RowTemplate>
-                </MudTable>
-
-                <MudDivider Class="my-4" />
-                <MudText>
-                    Predicted mix: <b>@Result.PredictedHex</b>
-                </MudText>
-                <div class="mt-2" style="@GetColorPreviewStyle(Result.PredictedHex)"></div>
-                <MudText Class="mt-2" Style="@GetSimilarityTextStyle(Result.ErrorRmse)">Similarity: @GetSimilarityText(Result.ErrorRmse)</MudText>
-            }
-        </MudPaper>
-    </MudItem>
-</MudGrid>
+    </MudTabPanel>
+</MudTabs>
 
 @if (IsImportDialogOpen)
 {
