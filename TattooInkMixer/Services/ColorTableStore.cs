@@ -2,7 +2,13 @@ namespace TattooInkMixer.Services;
 
 public sealed class ColorTableStore
 {
+    private readonly IColorTableRepository _repository;
     private readonly object _sync = new();
+
+    public ColorTableStore(IColorTableRepository repository)
+    {
+        _repository = repository;
+    }
 
     public IReadOnlyList<ColorTableEntry> Entries
     {
@@ -10,7 +16,7 @@ public sealed class ColorTableStore
         {
             lock (_sync)
             {
-                return _entries
+                return _repository.LoadEntries()
                     .Select(entry => new ColorTableEntry
                     {
                         Category = entry.Category,
@@ -23,16 +29,14 @@ public sealed class ColorTableStore
         }
     }
 
-    private List<ColorTableEntry> _entries = [];
-
     public void EnsureInitialized()
     {
         lock (_sync)
         {
-            if (_entries.Count > 0)
+            if (_repository.LoadEntries().Count > 0)
                 return;
 
-            _entries = CreateDefaultEntries();
+            _repository.SaveEntries(CreateDefaultEntries());
         }
     }
 
@@ -40,13 +44,13 @@ public sealed class ColorTableStore
     {
         lock (_sync)
         {
-            _entries = entries.Select(entry => new ColorTableEntry
+            _repository.SaveEntries(entries.Select(entry => new ColorTableEntry
             {
                 Category = entry.Category,
                 Name = entry.Name,
                 Brand = entry.Brand,
                 Hex = entry.Hex
-            }).ToList();
+            }).ToList());
         }
     }
 
