@@ -1,6 +1,8 @@
 using TattooInkMixer.Services;
 using MudBlazor.Services;
 using TattooInkMixer.Components;
+using Microsoft.EntityFrameworkCore;
+using TattooInkMixer.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +11,8 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddMudServices();
 builder.Services.AddScoped<ColorTableStore>();
+builder.Services.AddDbContext<InkMixerDbContext>(options =>
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 var app = builder.Build();
 
