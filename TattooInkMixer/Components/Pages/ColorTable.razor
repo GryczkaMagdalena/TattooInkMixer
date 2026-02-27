@@ -1,0 +1,449 @@
+@page "/color-table"
+@rendermode InteractiveServer
+@using System.Text.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.JSInterop
+@using TattooInkMixer.Services
+
+<MudPaper Class="pa-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">My colors (@Inks.Count)</MudText>
+
+    <MudTable Items="Inks" Dense="true" Hover="true" Bordered="true" Striped="true">
+        <HeaderContent>
+            <MudTh>Name</MudTh>
+            <MudTh>Color</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudTextField T="string" Value="@context.Name" ValueChanged="@(value => context.Name = value)" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            </MudTd>
+            <MudTd>
+                <div class="color-editor">
+                    <label class="color-swatch" style="@GetColorPreviewStyle(context.Hex)">
+                        <input type="color" value="@GetColorInputValue(context.Hex)" @oninput="@(e => UpdateColorFromPicker(context, e.Value?.ToString()))" />
+                    </label>
+
+                    <MudTextField T="string"
+                                  Label="HEX"
+                                  Value="@context.Hex"
+                                  ValueChanged="@(value => UpdateColorFromHex(context, value))"
+                                  Immediate="true"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense" />
+
+                    <MudTextField T="string"
+                                  Label="RGB"
+                                  Value="@HexToRgbText(context.Hex)"
+                                  ValueChanged="@(value => UpdateColorFromRgb(context, value))"
+                                  Immediate="true"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense" />
+                </div>
+            </MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="() => Remove(context.Id)" />
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+
+    <MudTable Items="MarketInks" Dense="true" Hover="true" Bordered="true" Striped="true" Class="mt-3">
+        <HeaderContent>
+            <MudTh>Brand</MudTh>
+            <MudTh>Color name</MudTh>
+            <MudTh>Color example</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Brand</MudTd>
+            <MudTd>@context.ColorName</MudTd>
+            <MudTd>
+                <div style="@GetColorPreviewStyle(context.Hex)"></div>
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+
+    <MudStack Row="true" Spacing="2" Class="mt-3">
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="Add">Add color</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Download" OnClick="ExportColorTable">Export colors</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.UploadFile" OnClick="OpenImportDialog">Import colors</MudButton>
+    </MudStack>
+
+    @if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@Error</MudAlert>
+    }
+</MudPaper>
+
+@if (IsImportDialogOpen)
+{
+    <MudOverlay Visible="true" DarkBackground="true" AutoClose="false" ZIndex="1300">
+        <MudPaper Class="import-dialog pa-4">
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.h6">Import color table</MudText>
+                <MudText Typo="Typo.subtitle2">Import mode</MudText>
+
+                <MudRadioGroup T="ImportMode" @bind-Value="SelectedImportMode" Dense="true" Class="import-mode-group">
+                    <MudRadio Value="@ImportMode.Replace" Color="Color.Primary">Replace existing colors</MudRadio>
+                    <MudRadio Value="@ImportMode.Merge" Color="Color.Primary">Merge with existing colors</MudRadio>
+                </MudRadioGroup>
+
+                <MudFileUpload T="IBrowserFile" FilesChanged="ImportColorTable" Accept=".json" Hidden="false">
+                    <ButtonTemplate>
+                        <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.UploadFile" Color="Color.Secondary">Upload .json</MudButton>
+                    </ButtonTemplate>
+                </MudFileUpload>
+
+                <MudStack Row="true" Justify="Justify.FlexEnd" Class="import-dialog-actions">
+                    <MudButton Variant="Variant.Text" OnClick="CloseImportDialog">Cancel</MudButton>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudOverlay>
+}
+
+@code {
+    private string? Error;
+    private List<InkRow> Inks = [];
+    private List<MarketInkRow> MarketInks = [];
+    private ImportMode SelectedImportMode = ImportMode.Replace;
+    private bool IsImportDialogOpen;
+
+    [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
+    [Inject] private ColorTableStore ColorTableStore { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        ColorTableStore.EnsureInitialized();
+        LoadFromStore();
+    }
+
+    private void LoadFromStore()
+    {
+        var entries = ColorTableStore.Entries;
+
+        Inks = entries
+            .Where(entry => string.Equals(entry.Category, ColorCategory.Standard, StringComparison.OrdinalIgnoreCase))
+            .Select(entry => new InkRow(entry.Name, entry.Hex))
+            .ToList();
+
+        MarketInks = entries
+            .Where(entry => string.Equals(entry.Category, ColorCategory.Company, StringComparison.OrdinalIgnoreCase))
+            .Select(entry => new MarketInkRow(entry.Brand ?? string.Empty, entry.Name, entry.Hex))
+            .ToList();
+    }
+
+    private void SaveToStore()
+    {
+        var entries = Inks
+            .Select(ink => new ColorTableEntry
+            {
+                Category = ColorCategory.Standard,
+                Name = ink.Name,
+                Hex = ink.Hex,
+                Brand = null
+            })
+            .Concat(MarketInks.Select(ink => new ColorTableEntry
+            {
+                Category = ColorCategory.Company,
+                Name = ink.ColorName,
+                Brand = ink.Brand,
+                Hex = ink.Hex
+            }))
+            .ToList();
+
+        ColorTableStore.ReplaceEntries(entries);
+    }
+
+    private static string GetColorPreviewStyle(string hex) => $"background:{hex}; width:48px; height:28px; border:1px solid #999; border-radius:4px;";
+
+    private static string GetColorInputValue(string hex)
+    {
+        try
+        {
+            _ = Rgb.FromHex(hex);
+            return hex;
+        }
+        catch
+        {
+            return "#808080";
+        }
+    }
+
+    private static string HexToRgbText(string hex)
+    {
+        try
+        {
+            var rgb = Rgb.FromHex(hex);
+            return $"{rgb.R}, {rgb.G}, {rgb.B}";
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    private static string? RgbTextToHex(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        var parts = value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length != 3)
+            return null;
+
+        if (!byte.TryParse(parts[0], out var r) || !byte.TryParse(parts[1], out var g) || !byte.TryParse(parts[2], out var b))
+            return null;
+
+        return $"#{r:X2}{g:X2}{b:X2}";
+    }
+
+    private void UpdateColorFromPicker(InkRow ink, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return;
+
+        ink.Hex = value.ToUpperInvariant();
+        SaveToStore();
+    }
+
+    private void UpdateColorFromHex(InkRow ink, string? value)
+    {
+        ink.Hex = string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+        SaveToStore();
+    }
+
+    private void UpdateColorFromRgb(InkRow ink, string? value)
+    {
+        var hex = RgbTextToHex(value);
+        if (hex is null)
+            return;
+
+        ink.Hex = hex;
+        SaveToStore();
+    }
+
+    private void Add()
+    {
+        Inks.Add(new InkRow($"Ink {Inks.Count + 1}", "#808080"));
+        SaveToStore();
+    }
+
+    private void Remove(Guid id)
+    {
+        var idx = Inks.FindIndex(x => x.Id == id);
+        if (idx >= 0)
+            Inks.RemoveAt(idx);
+
+        SaveToStore();
+    }
+
+    private async Task ExportColorTable()
+    {
+        Error = null;
+
+        try
+        {
+            var model = BuildExportModel();
+            var json = JsonSerializer.Serialize(model, new JsonSerializerOptions { WriteIndented = true });
+            await JsRuntime.InvokeVoidAsync("downloadColorTableFile", "color-table.json", "application/json", json);
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+        }
+    }
+
+    private void OpenImportDialog()
+    {
+        IsImportDialogOpen = true;
+    }
+
+    private void CloseImportDialog()
+    {
+        IsImportDialogOpen = false;
+    }
+
+    private async Task ImportColorTable(IBrowserFile? file)
+    {
+        Error = null;
+
+        if (file is null)
+        {
+            Error = "No file was selected.";
+            return;
+        }
+
+        if (!Path.GetExtension(file.Name).Equals(".json", StringComparison.OrdinalIgnoreCase))
+        {
+            Error = "Only .json color table files are supported.";
+            return;
+        }
+
+        try
+        {
+            await using var stream = file.OpenReadStream(maxAllowedSize: 1_048_576);
+            var model = await JsonSerializer.DeserializeAsync<ColorTableFile>(stream, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            if (model is null)
+            {
+                Error = "Failed to parse the JSON file.";
+                return;
+            }
+
+            var importedEntries = ValidateAndNormalizeEntries(model);
+            var mergedEntries = SelectedImportMode == ImportMode.Replace
+                ? importedEntries
+                : BuildExportModel().Entries.Concat(importedEntries).ToList();
+
+            var dedupedEntries = DeduplicateEntries(mergedEntries);
+            ApplyImportedModel(new ColorTableFile { Version = model.Version, Entries = dedupedEntries });
+            IsImportDialogOpen = false;
+        }
+        catch (JsonException ex)
+        {
+            Error = $"Invalid JSON format: {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+        }
+    }
+
+    private static List<ColorTableEntry> ValidateAndNormalizeEntries(ColorTableFile model)
+    {
+        var entries = model.Entries ?? [];
+        var errors = new List<string>();
+        var normalized = new List<ColorTableEntry>();
+
+        for (var i = 0; i < entries.Count; i++)
+        {
+            var entry = entries[i];
+            var entryLabel = $"Entry {i + 1}";
+            var category = string.IsNullOrWhiteSpace(entry.Category) ? ColorCategory.Standard : entry.Category.Trim();
+
+            if (!string.Equals(category, ColorCategory.Standard, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(category, ColorCategory.Company, StringComparison.OrdinalIgnoreCase))
+            {
+                errors.Add($"{entryLabel}: invalid category '{entry.Category}'.");
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(entry.Name))
+            {
+                errors.Add($"{entryLabel}: Name is required.");
+                continue;
+            }
+
+            if (string.Equals(category, ColorCategory.Company, StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(entry.Brand))
+            {
+                errors.Add($"{entryLabel}: Brand is required for company entries.");
+                continue;
+            }
+
+            var normalizedHex = entry.Hex?.Trim().ToUpperInvariant() ?? string.Empty;
+            try
+            {
+                _ = Rgb.FromHex(normalizedHex);
+            }
+            catch
+            {
+                errors.Add($"{entryLabel}: invalid Hex '{entry.Hex}'.");
+                continue;
+            }
+
+            normalized.Add(new ColorTableEntry
+            {
+                Category = string.Equals(category, ColorCategory.Company, StringComparison.OrdinalIgnoreCase)
+                    ? ColorCategory.Company
+                    : ColorCategory.Standard,
+                Name = entry.Name.Trim(),
+                Brand = string.IsNullOrWhiteSpace(entry.Brand) ? null : entry.Brand.Trim(),
+                Hex = normalizedHex
+            });
+        }
+
+        if (errors.Count > 0)
+            throw new InvalidOperationException($"Import validation failed:{Environment.NewLine}{string.Join(Environment.NewLine, errors)}");
+
+        return normalized;
+    }
+
+    private static List<ColorTableEntry> DeduplicateEntries(List<ColorTableEntry> entries)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var deduped = new List<ColorTableEntry>();
+
+        foreach (var entry in entries)
+        {
+            var key = $"{entry.Category.Trim().ToUpperInvariant()}|{entry.Name.Trim().ToUpperInvariant()}|{(entry.Brand ?? string.Empty).Trim().ToUpperInvariant()}|{entry.Hex.Trim().ToUpperInvariant()}";
+            if (!seen.Add(key))
+                continue;
+
+            deduped.Add(entry);
+        }
+
+        return deduped;
+    }
+
+    private ColorTableFile BuildExportModel()
+    {
+        return new ColorTableFile
+        {
+            Version = 1,
+            ExportedAtUtc = DateTimeOffset.UtcNow,
+            App = "TattooInkMixer",
+            Entries = Inks
+                .Select(ink => new ColorTableEntry
+                {
+                    Category = ColorCategory.Standard,
+                    Name = ink.Name,
+                    Hex = ink.Hex,
+                    Brand = null
+                })
+                .Concat(MarketInks.Select(ink => new ColorTableEntry
+                {
+                    Category = ColorCategory.Company,
+                    Name = ink.ColorName,
+                    Brand = ink.Brand,
+                    Hex = ink.Hex
+                }))
+                .ToList()
+        };
+    }
+
+    private void ApplyImportedModel(ColorTableFile model)
+    {
+        var entries = model.Entries ?? [];
+
+        Inks = entries
+            .Where(entry => string.Equals(entry.Category, ColorCategory.Standard, StringComparison.OrdinalIgnoreCase))
+            .Select(entry => new InkRow(entry.Name, entry.Hex))
+            .ToList();
+
+        MarketInks = entries
+            .Where(entry => string.Equals(entry.Category, ColorCategory.Company, StringComparison.OrdinalIgnoreCase))
+            .Select(entry => new MarketInkRow(entry.Brand ?? string.Empty, entry.Name, entry.Hex))
+            .ToList();
+
+        SaveToStore();
+    }
+
+    private sealed class InkRow
+    {
+        public Guid Id { get; } = Guid.NewGuid();
+        public InkRow(string name, string hex) { Name = name; Hex = hex; }
+        public string Name { get; set; }
+        public string Hex { get; set; }
+    }
+
+    private sealed record MarketInkRow(string Brand, string ColorName, string Hex);
+
+    private enum ImportMode
+    {
+        Replace,
+        Merge
+    }
+}
