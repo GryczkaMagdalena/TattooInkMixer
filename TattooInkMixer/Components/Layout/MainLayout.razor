@@ -18,11 +18,23 @@
             }
         </MudLink>
         <MudSpacer />
-        <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/mixer">Mixer</MudButton>
-        <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/color-table">Color table</MudButton>
         <MudButton Variant="Variant.Text" Color="Color.Inherit">Log in</MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="ms-2" Href="/signup">Sign up</MudButton>
     </MudAppBar>
+
+    <MudDrawer Open="true" Elevation="1" Variant="DrawerVariant.Responsive" Breakpoint="Breakpoint.Sm" Class="side-drawer">
+        <nav class="side-menu-links">
+            <NavLink href="/mixer" class="side-menu-link" Match="NavLinkMatch.Prefix">
+                <MudIcon Icon="@Icons.Material.Filled.Equalizer" Class="side-menu-icon" />
+                <span class="side-menu-label">Mixer</span>
+            </NavLink>
+
+            <NavLink href="/color-table" class="side-menu-link" Match="NavLinkMatch.Prefix">
+                <MudIcon Icon="@Icons.Material.Filled.Palette" Class="side-menu-icon" />
+                <span class="side-menu-label">Inks</span>
+            </NavLink>
+        </nav>
+    </MudDrawer>
 
     <MudMainContent>
         <MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
