@@ -13,10 +13,10 @@
 }
 
 .side-drawer {
-    width: 92px;
+    width: 96px;
     margin-top: 48px;
     height: calc(100vh - 48px);
-    background: #181b22;
+    background: linear-gradient(180deg, #1b1e25 0%, #171920 100%);
     border-right: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -24,36 +24,55 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.5rem;
-    padding-top: 0.75rem;
+    gap: 1rem;
+    padding-top: 1rem;
 }
 
 .side-menu-link {
-    width: 70px;
-    min-height: 88px;
-    border-radius: 22px;
-    color: #d7d7d7;
+    width: 78px;
     text-decoration: none;
     display: inline-flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.45rem;
-    font-size: 0.78rem;
-    font-weight: 600;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    gap: 0.5rem;
+    color: #d0d3d6;
+}
+
+.side-menu-link-badge {
+    width: 76px;
+    height: 44px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+}
+
+.side-menu-label {
+    font-size: 0.88rem;
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    transition: color 0.2s ease;
 }
 
 .side-menu-icon {
-    font-size: 2.35rem;
+    font-size: 2.6rem;
 }
 
-.side-menu-link.active {
-    background-color: #00639d;
-    color: #95d2ff;
+.side-menu-link.active .side-menu-link-badge {
+    background-color: #005f97;
 }
 
-.side-menu-link:hover {
+.side-menu-link.active .side-menu-label {
+    color: #7ecbff;
+}
+
+.side-menu-link:hover .side-menu-link-badge {
     background-color: rgba(255, 255, 255, 0.08);
+}
+
+.side-menu-link:hover .side-menu-label {
     color: #ffffff;
 }

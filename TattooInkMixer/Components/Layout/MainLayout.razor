@@ -25,12 +25,17 @@
     <MudDrawer Open="true" Elevation="1" Variant="DrawerVariant.Responsive" Breakpoint="Breakpoint.Sm" Class="side-drawer">
         <nav class="side-menu-links">
             <NavLink href="/mixer" class="side-menu-link" Match="NavLinkMatch.Prefix">
-                <MudIcon Icon="@Icons.Material.Filled.Equalizer" Class="side-menu-icon" />
-                <span>Mixer</span>
+                <span class="side-menu-link-badge">
+                    <MudIcon Icon="@Icons.Material.Filled.Equalizer" Class="side-menu-icon" />
+                </span>
+                <span class="side-menu-label">Mixer</span>
             </NavLink>
+
             <NavLink href="/color-table" class="side-menu-link" Match="NavLinkMatch.Prefix">
-                <MudIcon Icon="@Icons.Material.Filled.Palette" Class="side-menu-icon" />
-                <span>Inks</span>
+                <span class="side-menu-link-badge">
+                    <MudIcon Icon="@Icons.Material.Filled.Palette" Class="side-menu-icon" />
+                </span>
+                <span class="side-menu-label">Inks</span>
             </NavLink>
         </nav>
     </MudDrawer>
