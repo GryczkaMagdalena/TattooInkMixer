@@ -6,25 +6,36 @@
 <MudSnackbarProvider />
 
 <MudLayout>
-    <MudAppBar Elevation="1" Dense="true">
-        <MudLink Href="/" Typo="Typo.h6" Color="Color.Inherit" Underline="Underline.None" Class="brand-link">
-            @if (!string.IsNullOrWhiteSpace(_headerLogoPath))
-            {
-                <img src="@_headerLogoPath" alt="Tattoo Ink Mixer" class="brand-logo" />
-            }
-            else
-            {
-                <span>Tattoo Ink Mixer</span>
-            }
-        </MudLink>
-        <MudSpacer />
-        <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/mixer">Mixer</MudButton>
-        <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/color-table">Color table</MudButton>
-        <MudButton Variant="Variant.Text" Color="Color.Inherit">Log in</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="ms-2" Href="/signup">Sign up</MudButton>
-    </MudAppBar>
+    <MudDrawer Open="true" Elevation="1" Variant="DrawerVariant.Responsive" Breakpoint="Breakpoint.Sm" Class="side-drawer">
+        <nav class="side-menu-links">
+            <NavLink href="/mixer" class="side-menu-link" Match="NavLinkMatch.Prefix">
+                <MudIcon Icon="@Icons.Material.Filled.Equalizer" Class="side-menu-icon" />
+                <span>Mixer</span>
+            </NavLink>
+            <NavLink href="/color-table" class="side-menu-link" Match="NavLinkMatch.Prefix">
+                <MudIcon Icon="@Icons.Material.Filled.Palette" Class="side-menu-icon" />
+                <span>Inks</span>
+            </NavLink>
+        </nav>
+    </MudDrawer>
 
     <MudMainContent>
+        <MudAppBar Elevation="1" Dense="true">
+            <MudLink Href="/" Typo="Typo.h6" Color="Color.Inherit" Underline="Underline.None" Class="brand-link">
+                @if (!string.IsNullOrWhiteSpace(_headerLogoPath))
+                {
+                    <img src="@_headerLogoPath" alt="Tattoo Ink Mixer" class="brand-logo" />
+                }
+                else
+                {
+                    <span>Tattoo Ink Mixer</span>
+                }
+            </MudLink>
+            <MudSpacer />
+            <MudButton Variant="Variant.Text" Color="Color.Inherit">Log in</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="ms-2" Href="/signup">Sign up</MudButton>
+        </MudAppBar>
+
         <MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
             @Body
         </MudContainer>
