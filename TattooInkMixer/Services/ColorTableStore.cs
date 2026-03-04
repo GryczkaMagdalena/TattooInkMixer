@@ -33,6 +33,7 @@ public sealed class ColorTableStore
     {
         lock (_sync)
         {
+            // If you want newly seeded defaults to be applied in an existing environment, clean the DB first.
             if (_repository.LoadEntries().Count > 0)
                 return;
 
