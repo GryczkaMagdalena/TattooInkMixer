@@ -148,6 +148,22 @@
                 {
                     <MudDivider Class="my-4" />
                     <MudText Typo="Typo.h6">Result</MudText>
+
+                    <MudTable Items="@MyMixResultRows" Dense="true" Hover="true" Bordered="true" Striped="true" Class="mt-2">
+                        <HeaderContent>
+                            <MudTh>Color</MudTh>
+                            <MudTh>Percentage</MudTh>
+                            <MudTh>Drops (1.5 ml)</MudTh>
+                            <MudTh>Drops (3 ml)</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>@context.Name</MudTd>
+                            <MudTd><b>@context.PercentageText</b></MudTd>
+                            <MudTd>@context.DropsFor15Ml</MudTd>
+                            <MudTd>@context.DropsFor3Ml</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+
                     <MudText Class="mt-2">Predicted HEX: <b>@MyMixPredictedHex</b></MudText>
                     <div class="mt-2" style="@GetColorPreviewStyle(MyMixPredictedHex)"></div>
                     <MudText Class="mt-2">RGB: @MyMixRgbText</MudText>
@@ -170,6 +186,7 @@
     private string? MyMixRgbText;
     private string? MyMixError;
     private string? MyMixNormalizationMessage;
+    private List<ManualMixResultRow> MyMixResultRows = [];
     private List<string> MyMixValidationErrors = [];
 
     private bool CanCalculateMyMix => OwnedInks.Count > 0 && MyMixValidationErrors.Count == 0;
@@ -412,6 +429,7 @@
         MyMixRgbText = null;
         MyMixError = null;
         MyMixNormalizationMessage = null;
+        MyMixResultRows = [];
 
         ValidateMyMixInputs();
     }
@@ -456,6 +474,7 @@
         MyMixPredictedHex = null;
         MyMixRgbText = null;
         MyMixNormalizationMessage = null;
+        MyMixResultRows = [];
 
         ValidateMyMixInputs();
         if (!CanCalculateMyMix)
@@ -491,6 +510,23 @@
                 .Select(row => row.Percentage / percentageTotal)
                 .ToArray();
 
+            MyMixResultRows = rowsToMix
+                .Zip(normalizedWeights)
+                .Where(pair => (pair.Second * 100) >= SmallestVisiblePercentage)
+                .Select(pair =>
+                {
+                    var row = pair.First;
+                    var weight = pair.Second;
+                    var ink = MixInkOptions[row.InkIndex!.Value];
+
+                    return new ManualMixResultRow(
+                        $"{ink.DisplayName} ({ink.Hex})",
+                        $"{(weight * 100):0.00}%",
+                        CalculateDrops(weight, 1.5),
+                        CalculateDrops(weight, 3.0));
+                })
+                .ToList();
+
             if (Math.Abs(percentageTotal - 100) > 0.0001)
                 MyMixNormalizationMessage = $"Percentages normalized from {percentageTotal:0.##}% to 100%.";
 
@@ -507,6 +543,7 @@
     }
 
     private sealed record RecipeRow(string Name, string Hex, string PercentageText, int DropsFor15Ml, int DropsFor3Ml);
+    private sealed record ManualMixResultRow(string Name, string PercentageText, int DropsFor15Ml, int DropsFor3Ml);
     private sealed record SolveInkCandidate(string DisplayName, string Hex);
     private sealed record MixInkOption(string DisplayName, string Hex);
 
