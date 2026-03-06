@@ -164,6 +164,7 @@
     private InkMixResult? Result;
 
     private List<MixInkOption> MixInkOptions = [];
+    private IReadOnlyList<MixInkOption> OwnedInks => MixInkOptions;
     private List<MixInputRow> MixRows = [];
     private string? MyMixPredictedHex;
     private string? MyMixRgbText;
@@ -183,17 +184,7 @@
 
     private void LoadMixInkOptions()
     {
-        var entries = ColorTableStore.Entries;
-
-        var ownedInks = entries
-            .Where(entry => string.Equals(entry.Category, ColorCategory.Standard, StringComparison.OrdinalIgnoreCase))
-            .Select(entry => new MixInkOption(entry.Name, entry.Hex));
-
-        var brandInks = entries
-            .Where(entry => string.Equals(entry.Category, ColorCategory.Company, StringComparison.OrdinalIgnoreCase))
-            .Select(entry => new MixInkOption(GetBrandInkDisplayName(entry.Brand, entry.Name), entry.Hex));
-
-        MixInkOptions = ownedInks.Concat(brandInks).ToList();
+        MixInkOptions = BuildMixInkOptions(ColorTableStore.Entries);
 
         if (MixInkOptions.Count > 0 && MixRows.Count == 0)
             MixRows.Add(new MixInputRow { InkIndex = 0, Percentage = 100 });
@@ -248,7 +239,6 @@
 
         return userInks.Concat(marketInks);
     }
-
 
     private static string GetBrandInkDisplayName(string? brand, string name)
     {
@@ -357,7 +347,8 @@
         {
             _ = Rgb.FromHex(TargetHex);
             var solveCandidates = GetSolveCandidates().ToList();
-            foreach (var ink in solveCandidates) _ = Rgb.FromHex(ink.Hex);
+            foreach (var ink in solveCandidates)
+                _ = Rgb.FromHex(ink.Hex);
 
             var hexes = solveCandidates.Select(x => x.Hex).ToList();
             Result = InkMixSolver.SolveWithLimit(hexes, TargetHex, MaxInks);
@@ -394,7 +385,7 @@
     private void AddMixRow()
     {
         MixRows.Add(new MixInputRow { InkIndex = MixInkOptions.Count > 0 ? 0 : null, Percentage = 0 });
-        RecalculateMyMix();
+        HandleManualInputUpdated();
     }
 
     private void RemoveMixRow(MixInputRow row)
@@ -441,7 +432,7 @@
             var row = MixRows[i];
             var rowLabel = $"Row {i + 1}";
 
-            if (!row.InkIndex.HasValue || row.InkIndex.Value < 0 || row.InkIndex.Value >= OwnedInks.Count)
+            if (!row.InkIndex.HasValue || row.InkIndex.Value < 0 || row.InkIndex.Value >= MixInkOptions.Count)
             {
                 MyMixValidationErrors.Add($"{rowLabel}: select an ink.");
             }
@@ -475,7 +466,7 @@
 
         try
         {
-            var validRows = MixRows
+            var rowsToMix = MixRows
                 .Where(row => row.InkIndex.HasValue && row.InkIndex.Value >= 0 && row.InkIndex.Value < MixInkOptions.Count && row.Percentage > 0)
                 .ToList();
 
@@ -485,7 +476,14 @@
                 return;
             }
 
-            var densities = validRows
+            var percentageTotal = rowsToMix.Sum(row => row.Percentage);
+            if (percentageTotal <= 0)
+            {
+                MyMixError = "Total percentage must be greater than 0.";
+                return;
+            }
+
+            var densities = rowsToMix
                 .Select(row => InkModel.ReflectanceToDensity(InkModel.ReflectanceFromHex(MixInkOptions[row.InkIndex!.Value].Hex)))
                 .ToList();
 
