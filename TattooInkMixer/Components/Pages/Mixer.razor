@@ -112,6 +112,32 @@
                 }
 
                 <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" Class="mt-2" OnClick="AddMixRow">Add color</MudButton>
+                <MudText Typo="Typo.caption" Class="mt-2 d-block">Each ink can only be selected once. Duplicate ink selections are blocked.</MudText>
+
+                @if (MyMixValidationErrors.Count > 0)
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">
+                        <ul class="ma-0 pl-4">
+                            @foreach (var validationError in MyMixValidationErrors)
+                            {
+                                <li>@validationError</li>
+                            }
+                        </ul>
+                    </MudAlert>
+                }
+
+                <MudButton Color="Color.Primary"
+                           Variant="Variant.Filled"
+                           Class="mt-3"
+                           Disabled="@(!CanCalculateMyMix)"
+                           OnClick="CalculateMyMix">
+                    Calculate result
+                </MudButton>
+
+                @if (!string.IsNullOrWhiteSpace(MyMixNormalizationMessage))
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true" Class="mt-3">@MyMixNormalizationMessage</MudAlert>
+                }
 
                 @if (!string.IsNullOrWhiteSpace(MyMixError))
                 {
@@ -138,11 +164,14 @@
     private InkMixResult? Result;
 
     private List<MixInkOption> MixInkOptions = [];
-    private IReadOnlyList<MixInkOption> OwnedInks => MixInkOptions;
     private List<MixInputRow> MixRows = [];
     private string? MyMixPredictedHex;
     private string? MyMixRgbText;
     private string? MyMixError;
+    private string? MyMixNormalizationMessage;
+    private List<string> MyMixValidationErrors = [];
+
+    private bool CanCalculateMyMix => MixInkOptions.Count > 0 && MyMixValidationErrors.Count == 0;
 
     [Inject] private ColorTableStore ColorTableStore { get; set; } = default!;
 
@@ -159,7 +188,7 @@
         if (MixInkOptions.Count > 0 && MixRows.Count == 0)
             MixRows.Add(new MixInputRow { InkIndex = 0, Percentage = 100 });
 
-        RecalculateMyMix();
+        ValidateMyMixInputs();
     }
 
     private static List<MixInkOption> BuildMixInkOptions(IReadOnlyList<ColorTableEntry> entries)
@@ -209,7 +238,6 @@
 
         return userInks.Concat(marketInks);
     }
-
 
     private static string GetBrandInkDisplayName(string? brand, string name)
     {
@@ -318,7 +346,8 @@
         {
             _ = Rgb.FromHex(TargetHex);
             var solveCandidates = GetSolveCandidates().ToList();
-            foreach (var ink in solveCandidates) _ = Rgb.FromHex(ink.Hex);
+            foreach (var ink in solveCandidates)
+                _ = Rgb.FromHex(ink.Hex);
 
             var hexes = solveCandidates.Select(x => x.Hex).ToList();
             Result = InkMixSolver.SolveWithLimit(hexes, TargetHex, MaxInks);
@@ -345,7 +374,7 @@
         if (!int.TryParse(value, out var selectedIndex))
         {
             row.InkIndex = null;
-            RecalculateMyMix();
+            HandleManualInputUpdated();
             return;
         }
 
@@ -355,32 +384,81 @@
     private void AddMixRow()
     {
         MixRows.Add(new MixInputRow { InkIndex = MixInkOptions.Count > 0 ? 0 : null, Percentage = 0 });
-        RecalculateMyMix();
+        HandleManualInputUpdated();
     }
 
     private void RemoveMixRow(MixInputRow row)
     {
         MixRows.Remove(row);
-        RecalculateMyMix();
+        HandleManualInputUpdated();
     }
 
     private void UpdateMixInk(MixInputRow row, int? value)
     {
         row.InkIndex = value;
-        RecalculateMyMix();
+        HandleManualInputUpdated();
     }
 
     private void UpdateMixPercentage(MixInputRow row, double value)
     {
         row.Percentage = value;
-        RecalculateMyMix();
+        HandleManualInputUpdated();
     }
 
-    private void RecalculateMyMix()
+    private void HandleManualInputUpdated()
+    {
+        MyMixPredictedHex = null;
+        MyMixRgbText = null;
+        MyMixError = null;
+        MyMixNormalizationMessage = null;
+
+        ValidateMyMixInputs();
+    }
+
+    private void ValidateMyMixInputs()
+    {
+        MyMixValidationErrors = [];
+
+        if (MixRows.Count == 0)
+        {
+            MyMixValidationErrors.Add("Add at least one row to calculate a mix.");
+            return;
+        }
+
+        var selectedInks = new HashSet<int>();
+        for (var i = 0; i < MixRows.Count; i++)
+        {
+            var row = MixRows[i];
+            var rowLabel = $"Row {i + 1}";
+
+            if (!row.InkIndex.HasValue || row.InkIndex.Value < 0 || row.InkIndex.Value >= MixInkOptions.Count)
+            {
+                MyMixValidationErrors.Add($"{rowLabel}: select an ink.");
+            }
+            else if (!selectedInks.Add(row.InkIndex.Value))
+            {
+                MyMixValidationErrors.Add($"{rowLabel}: duplicate ink selected. Choose a different ink.");
+            }
+
+            if (row.Percentage < 0)
+                MyMixValidationErrors.Add($"{rowLabel}: percentage must be greater than or equal to 0.");
+        }
+
+        var totalPercentage = MixRows.Sum(row => row.Percentage);
+        if (totalPercentage <= 0)
+            MyMixValidationErrors.Add("Total percentage must be greater than 0.");
+    }
+
+    private void CalculateMyMix()
     {
         MyMixError = null;
         MyMixPredictedHex = null;
         MyMixRgbText = null;
+        MyMixNormalizationMessage = null;
+
+        ValidateMyMixInputs();
+        if (!CanCalculateMyMix)
+            return;
 
         if (MixInkOptions.Count == 0)
             return;
@@ -392,11 +470,17 @@
                 .ToList();
 
             if (rowsToMix.Count == 0)
+            {
+                MyMixError = "Add at least one row with a percentage above 0.";
                 return;
+            }
 
             var percentageTotal = rowsToMix.Sum(row => row.Percentage);
             if (percentageTotal <= 0)
+            {
+                MyMixError = "Total percentage must be greater than 0.";
                 return;
+            }
 
             var densities = rowsToMix
                 .Select(row => InkModel.ReflectanceToDensity(InkModel.ReflectanceFromHex(MixInkOptions[row.InkIndex!.Value].Hex)))
@@ -405,6 +489,9 @@
             var normalizedWeights = rowsToMix
                 .Select(row => row.Percentage / percentageTotal)
                 .ToArray();
+
+            if (Math.Abs(percentageTotal - 100) > 0.0001)
+                MyMixNormalizationMessage = $"Percentages normalized from {percentageTotal:0.##}% to 100%.";
 
             var mixedReflectance = InkModel.MixReflectanceFromDensities(densities, normalizedWeights);
             var mixedRgb = Srgb.FromLinear(mixedReflectance);
