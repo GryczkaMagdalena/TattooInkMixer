@@ -82,15 +82,15 @@
                 <MudText Typo="Typo.h6">Import color table</MudText>
                 <MudText Typo="Typo.subtitle2">Import mode</MudText>
 
-                <MudRadioGroup T="ImportMode" @bind-Value="SelectedImportMode" Dense="true" Class="import-mode-group">
+                <MudRadioGroup T="ImportMode" @bind-Value="SelectedImportMode" Class="import-mode-group">
                     <MudRadio Value="@ImportMode.Replace" Color="Color.Primary">Replace existing colors</MudRadio>
                     <MudRadio Value="@ImportMode.Merge" Color="Color.Primary">Merge with existing colors</MudRadio>
                 </MudRadioGroup>
 
                 <MudFileUpload T="IBrowserFile" FilesChanged="ImportColorTable" Accept=".json" Hidden="false">
-                    <ButtonTemplate>
+                    <ActivatorContent>
                         <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.UploadFile" Color="Color.Secondary">Upload .json</MudButton>
-                    </ButtonTemplate>
+                    </ActivatorContent>
                 </MudFileUpload>
 
                 <MudStack Row="true" Justify="Justify.FlexEnd" Class="import-dialog-actions">

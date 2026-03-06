@@ -68,10 +68,10 @@
         </MudTabPanel>
 
         <MudTabPanel Text="Calculate result from my mix">
-            @if (!OwnedInks.Any())
+            @if (!MixInkOptions.Any())
             {
                 <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Filled" Class="mt-2">
-                    You do not have any owned inks yet. Add your colors in <MudLink Href="/color-table">Color Table</MudLink> first.
+                    You do not have any colors yet. Add your own inks or import brand colors in <MudLink Href="/color-table">Color Table</MudLink> first.
                 </MudAlert>
             }
             else
@@ -83,10 +83,10 @@
                             <MudText Typo="Typo.caption" Class="mb-1">Ink</MudText>
                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                                 <select class="mud-input-slot mud-input-root mud-input mud-input-outlined mud-select-input" value="@GetMixInkSelectValue(row)" @onchange="@(e => UpdateMixInkFromInput(row, e.Value?.ToString()))">
-                                    @for (var i = 0; i < OwnedInks.Count; i++)
+                                    @for (var i = 0; i < MixInkOptions.Count; i++)
                                     {
-                                        var ink = OwnedInks[i];
-                                        <option value="@i">@ink.Name (@ink.Hex)</option>
+                                        var ink = MixInkOptions[i];
+                                        <option value="@i">@ink.DisplayName (@ink.Hex)</option>
                                     }
                                 </select>
                                 <div style="@GetColorPreviewStyle(GetSelectedInkHex(row))"></div>
@@ -137,7 +137,8 @@
     private string? Error;
     private InkMixResult? Result;
 
-    private List<OwnedInkOption> OwnedInks = [];
+    private List<MixInkOption> MixInkOptions = [];
+    private IReadOnlyList<MixInkOption> OwnedInks => MixInkOptions;
     private List<MixInputRow> MixRows = [];
     private string? MyMixPredictedHex;
     private string? MyMixRgbText;
@@ -148,20 +149,30 @@
     protected override void OnInitialized()
     {
         ColorTableStore.EnsureInitialized();
-        LoadOwnedInks();
+        LoadMixInkOptions();
     }
 
-    private void LoadOwnedInks()
+    private void LoadMixInkOptions()
     {
-        OwnedInks = ColorTableStore.Entries
-            .Where(entry => string.Equals(entry.Category, ColorCategory.Standard, StringComparison.OrdinalIgnoreCase))
-            .Select(entry => new OwnedInkOption(entry.Name, entry.Hex))
-            .ToList();
+        MixInkOptions = BuildMixInkOptions(ColorTableStore.Entries);
 
-        if (OwnedInks.Count > 0 && MixRows.Count == 0)
+        if (MixInkOptions.Count > 0 && MixRows.Count == 0)
             MixRows.Add(new MixInputRow { InkIndex = 0, Percentage = 100 });
 
         RecalculateMyMix();
+    }
+
+    private static List<MixInkOption> BuildMixInkOptions(IReadOnlyList<ColorTableEntry> entries)
+    {
+        var ownedInks = entries
+            .Where(entry => string.Equals(entry.Category, ColorCategory.Standard, StringComparison.OrdinalIgnoreCase))
+            .Select(entry => new MixInkOption(entry.Name, entry.Hex));
+
+        var brandInks = entries
+            .Where(entry => string.Equals(entry.Category, ColorCategory.Company, StringComparison.OrdinalIgnoreCase))
+            .Select(entry => new MixInkOption(GetBrandInkDisplayName(entry.Brand, entry.Name), entry.Hex));
+
+        return ownedInks.Concat(brandInks).ToList();
     }
 
     private static string GetColorPreviewStyle(string hex) => $"background:{hex}; width:48px; height:28px; border:1px solid #999; border-radius:4px;";
@@ -194,9 +205,18 @@
 
         var marketInks = entries
             .Where(entry => string.Equals(entry.Category, ColorCategory.Company, StringComparison.OrdinalIgnoreCase))
-            .Select(entry => new SolveInkCandidate($"{entry.Brand ?? string.Empty} - {entry.Name}", entry.Hex));
+            .Select(entry => new SolveInkCandidate(GetBrandInkDisplayName(entry.Brand, entry.Name), entry.Hex));
 
         return userInks.Concat(marketInks);
+    }
+
+
+    private static string GetBrandInkDisplayName(string? brand, string name)
+    {
+        if (string.IsNullOrWhiteSpace(brand))
+            return name;
+
+        return $"{brand.Trim()} - {name}";
     }
 
     private static string GetSimilarityText(double rmse)
@@ -314,10 +334,10 @@
 
     private string GetSelectedInkHex(MixInputRow row)
     {
-        if (!row.InkIndex.HasValue || row.InkIndex.Value < 0 || row.InkIndex.Value >= OwnedInks.Count)
+        if (!row.InkIndex.HasValue || row.InkIndex.Value < 0 || row.InkIndex.Value >= MixInkOptions.Count)
             return "#808080";
 
-        return OwnedInks[row.InkIndex.Value].Hex;
+        return MixInkOptions[row.InkIndex.Value].Hex;
     }
 
     private void UpdateMixInkFromInput(MixInputRow row, string? value)
@@ -334,7 +354,7 @@
 
     private void AddMixRow()
     {
-        MixRows.Add(new MixInputRow { InkIndex = OwnedInks.Count > 0 ? 0 : null, Percentage = 0 });
+        MixRows.Add(new MixInputRow { InkIndex = MixInkOptions.Count > 0 ? 0 : null, Percentage = 0 });
         RecalculateMyMix();
     }
 
@@ -362,27 +382,27 @@
         MyMixPredictedHex = null;
         MyMixRgbText = null;
 
-        if (OwnedInks.Count == 0)
+        if (MixInkOptions.Count == 0)
             return;
 
         try
         {
-            var validRows = MixRows
-                .Where(row => row.InkIndex.HasValue && row.InkIndex.Value >= 0 && row.InkIndex.Value < OwnedInks.Count && row.Percentage > 0)
+            var rowsToMix = MixRows
+                .Where(row => row.InkIndex.HasValue && row.InkIndex.Value >= 0 && row.InkIndex.Value < MixInkOptions.Count && row.Percentage > 0)
                 .ToList();
 
-            if (validRows.Count == 0)
+            if (rowsToMix.Count == 0)
                 return;
 
-            var percentageTotal = validRows.Sum(row => row.Percentage);
+            var percentageTotal = rowsToMix.Sum(row => row.Percentage);
             if (percentageTotal <= 0)
                 return;
 
-            var densities = validRows
-                .Select(row => InkModel.ReflectanceToDensity(InkModel.ReflectanceFromHex(OwnedInks[row.InkIndex!.Value].Hex)))
+            var densities = rowsToMix
+                .Select(row => InkModel.ReflectanceToDensity(InkModel.ReflectanceFromHex(MixInkOptions[row.InkIndex!.Value].Hex)))
                 .ToList();
 
-            var normalizedWeights = validRows
+            var normalizedWeights = rowsToMix
                 .Select(row => row.Percentage / percentageTotal)
                 .ToArray();
 
@@ -400,7 +420,7 @@
 
     private sealed record RecipeRow(string Name, string Hex, string PercentageText, int DropsFor15Ml, int DropsFor3Ml);
     private sealed record SolveInkCandidate(string DisplayName, string Hex);
-    private sealed record OwnedInkOption(string Name, string Hex);
+    private sealed record MixInkOption(string DisplayName, string Hex);
 
     private sealed class MixInputRow
     {
