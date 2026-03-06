@@ -128,6 +128,12 @@ public sealed class InkMixResult
     public required double ErrorRmse { get; init; }           // RMSE in reflectance proxy space
 }
 
+public sealed class InkWeightPredictionResult
+{
+    public required double[] Weights { get; init; }      // normalized to sum=1
+    public required string PredictedHex { get; init; }
+}
+
 public static class InkMixSolver
 {
     // Loss in reflectance proxy space (linear RGB)
@@ -135,6 +141,40 @@ public static class InkMixSolver
     {
         var d = predR - targetR;
         return d.X * d.X + d.Y * d.Y + d.Z * d.Z;
+    }
+
+    public static InkWeightPredictionResult PredictFromWeights(IReadOnlyList<string> inkHexes, IReadOnlyList<double> weights)
+    {
+        if (inkHexes.Count == 0)
+            throw new ArgumentException("At least one ink is required.", nameof(inkHexes));
+
+        if (inkHexes.Count != weights.Count)
+            throw new ArgumentException("Ink count must match weight count.", nameof(weights));
+
+        var normalized = weights.ToArray();
+
+        if (normalized.Any(w => w < 0))
+            throw new ArgumentOutOfRangeException(nameof(weights), "Weights cannot be negative.");
+
+        double sum = normalized.Sum();
+        if (sum <= 0)
+            throw new ArgumentException("At least one weight must be positive.", nameof(weights));
+
+        for (int i = 0; i < normalized.Length; i++)
+            normalized[i] /= sum;
+
+        var densities = inkHexes
+            .Select(h => InkModel.ReflectanceToDensity(InkModel.ReflectanceFromHex(h)))
+            .ToList();
+
+        var mixedReflectance = InkModel.MixReflectanceFromDensities(densities, normalized);
+        var predictedHex = Srgb.FromLinear(mixedReflectance).ToHex();
+
+        return new InkWeightPredictionResult
+        {
+            Weights = normalized,
+            PredictedHex = predictedHex
+        };
     }
 
     public static InkMixResult Solve(IReadOnlyList<string> inkHexes, string targetHex, int iterations = 450)
