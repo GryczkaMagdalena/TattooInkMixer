@@ -164,6 +164,7 @@
     private InkMixResult? Result;
 
     private List<MixInkOption> MixInkOptions = [];
+    private IReadOnlyList<MixInkOption> OwnedInks => MixInkOptions;
     private List<MixInputRow> MixRows = [];
     private string? MyMixPredictedHex;
     private string? MyMixRgbText;
@@ -171,7 +172,7 @@
     private string? MyMixNormalizationMessage;
     private List<string> MyMixValidationErrors = [];
 
-    private bool CanCalculateMyMix => MixInkOptions.Count > 0 && MyMixValidationErrors.Count == 0;
+    private bool CanCalculateMyMix => OwnedInks.Count > 0 && MyMixValidationErrors.Count == 0;
 
     [Inject] private ColorTableStore ColorTableStore { get; set; } = default!;
 
