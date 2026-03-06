@@ -153,8 +153,16 @@
 
     private void LoadMixInkOptions()
     {
-        var entries = ColorTableStore.Entries;
+        MixInkOptions = BuildMixInkOptions(ColorTableStore.Entries);
 
+        if (MixInkOptions.Count > 0 && MixRows.Count == 0)
+            MixRows.Add(new MixInputRow { InkIndex = 0, Percentage = 100 });
+
+        RecalculateMyMix();
+    }
+
+    private static List<MixInkOption> BuildMixInkOptions(IReadOnlyList<ColorTableEntry> entries)
+    {
         var ownedInks = entries
             .Where(entry => string.Equals(entry.Category, ColorCategory.Standard, StringComparison.OrdinalIgnoreCase))
             .Select(entry => new MixInkOption(entry.Name, entry.Hex));
@@ -163,12 +171,7 @@
             .Where(entry => string.Equals(entry.Category, ColorCategory.Company, StringComparison.OrdinalIgnoreCase))
             .Select(entry => new MixInkOption(GetBrandInkDisplayName(entry.Brand, entry.Name), entry.Hex));
 
-        MixInkOptions = ownedInks.Concat(brandInks).ToList();
-
-        if (MixInkOptions.Count > 0 && MixRows.Count == 0)
-            MixRows.Add(new MixInputRow { InkIndex = 0, Percentage = 100 });
-
-        RecalculateMyMix();
+        return ownedInks.Concat(brandInks).ToList();
     }
 
     private static string GetColorPreviewStyle(string hex) => $"background:{hex}; width:48px; height:28px; border:1px solid #999; border-radius:4px;";
