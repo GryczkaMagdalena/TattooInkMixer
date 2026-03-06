@@ -201,6 +201,19 @@
         ValidateMyMixInputs();
     }
 
+    private static List<MixInkOption> BuildMixInkOptions(IReadOnlyList<ColorTableEntry> entries)
+    {
+        var ownedInks = entries
+            .Where(entry => string.Equals(entry.Category, ColorCategory.Standard, StringComparison.OrdinalIgnoreCase))
+            .Select(entry => new MixInkOption(entry.Name, entry.Hex));
+
+        var brandInks = entries
+            .Where(entry => string.Equals(entry.Category, ColorCategory.Company, StringComparison.OrdinalIgnoreCase))
+            .Select(entry => new MixInkOption(GetBrandInkDisplayName(entry.Brand, entry.Name), entry.Hex));
+
+        return ownedInks.Concat(brandInks).ToList();
+    }
+
     private static string GetColorPreviewStyle(string hex) => $"background:{hex}; width:48px; height:28px; border:1px solid #999; border-radius:4px;";
 
     private static int DropsPerMilliliter => 20;
