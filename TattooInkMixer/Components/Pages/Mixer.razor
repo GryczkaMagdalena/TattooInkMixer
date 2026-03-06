@@ -80,23 +80,17 @@
                 {
                     <MudGrid Class="mt-2">
                         <MudItem xs="12" md="7">
-                            <MudSelect T="int?"
-                                       Label="Ink"
-                                       Value="@row.InkIndex"
-                                       ValueChanged="@(value => UpdateMixInk(row, value))"
-                                       Variant="Variant.Outlined"
-                                       Margin="Margin.Dense">
-                                @for (var i = 0; i < OwnedInks.Count; i++)
-                                {
-                                    var ink = OwnedInks[i];
-                                    <MudSelectItem Value="@i">
-                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                            <div style="@GetColorPreviewStyle(ink.Hex)"></div>
-                                            <MudText>@ink.Name (@ink.Hex)</MudText>
-                                        </MudStack>
-                                    </MudSelectItem>
-                                }
-                            </MudSelect>
+                            <MudText Typo="Typo.caption" Class="mb-1">Ink</MudText>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <select class="mud-input-slot mud-input-root mud-input mud-input-outlined mud-select-input" value="@GetMixInkSelectValue(row)" @onchange="@(e => UpdateMixInkFromInput(row, e.Value?.ToString()))">
+                                    @for (var i = 0; i < OwnedInks.Count; i++)
+                                    {
+                                        var ink = OwnedInks[i];
+                                        <option value="@i">@ink.Name (@ink.Hex)</option>
+                                    }
+                                </select>
+                                <div style="@GetColorPreviewStyle(GetSelectedInkHex(row))"></div>
+                            </MudStack>
                         </MudItem>
                         <MudItem xs="9" md="4">
                             <MudNumericField T="double"
@@ -313,6 +307,29 @@
         {
             Error = ex.Message;
         }
+    }
+
+    private static string GetMixInkSelectValue(MixInputRow row)
+        => row.InkIndex?.ToString() ?? string.Empty;
+
+    private string GetSelectedInkHex(MixInputRow row)
+    {
+        if (!row.InkIndex.HasValue || row.InkIndex.Value < 0 || row.InkIndex.Value >= OwnedInks.Count)
+            return "#808080";
+
+        return OwnedInks[row.InkIndex.Value].Hex;
+    }
+
+    private void UpdateMixInkFromInput(MixInputRow row, string? value)
+    {
+        if (!int.TryParse(value, out var selectedIndex))
+        {
+            row.InkIndex = null;
+            RecalculateMyMix();
+            return;
+        }
+
+        UpdateMixInk(row, selectedIndex);
     }
 
     private void AddMixRow()
