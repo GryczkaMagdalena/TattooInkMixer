@@ -22,6 +22,16 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<InkMixerDbContext>();
     dbContext.Database.Migrate();
 
+    dbContext.Database.ExecuteSqlRaw("""
+        CREATE TABLE IF NOT EXISTS "ColorTableEntries" (
+            "Id" INTEGER NOT NULL CONSTRAINT "PK_ColorTableEntries" PRIMARY KEY AUTOINCREMENT,
+            "Category" TEXT NOT NULL,
+            "Name" TEXT NOT NULL,
+            "Brand" TEXT NULL,
+            "Hex" TEXT NOT NULL
+        );
+        """);
+
     if (!dbContext.ColorTableRecords.Any())
     {
         dbContext.ColorTableRecords.AddRange(ColorTableStore.CreateDefaultEntries().Select(entry => new ColorTableRecord
