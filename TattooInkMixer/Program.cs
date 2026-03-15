@@ -1,7 +1,6 @@
 using TattooInkMixer.Services;
 using MudBlazor.Services;
 using TattooInkMixer.Components;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using TattooInkMixer.Data;
 
@@ -23,19 +22,17 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<InkMixerDbContext>();
     dbContext.Database.Migrate();
 
-    var hasEntries = true;
+    dbContext.Database.ExecuteSqlRaw(@"""
+        CREATE TABLE IF NOT EXISTS "ColorTableEntries" (
+            "Id" INTEGER NOT NULL CONSTRAINT "PK_ColorTableEntries" PRIMARY KEY AUTOINCREMENT,
+            "Category" TEXT NOT NULL,
+            "Name" TEXT NOT NULL,
+            "Brand" TEXT NULL,
+            "Hex" TEXT NOT NULL
+        );
+        """);
 
-    try
-    {
-        hasEntries = dbContext.ColorTableRecords.Any();
-    }
-    catch (SqliteException ex) when (ex.SqliteErrorCode == 1 && ex.Message.Contains("no such table: ColorTableEntries"))
-    {
-        dbContext.Database.EnsureCreated();
-        hasEntries = dbContext.ColorTableRecords.Any();
-    }
-
-    if (!hasEntries)
+    if (!dbContext.ColorTableRecords.Any())
     {
         dbContext.ColorTableRecords.AddRange(ColorTableStore.CreateDefaultEntries().Select(entry => new ColorTableRecord
         {
